@@ -3,6 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "license": "MIT",
+  "author": "@sijenggo86",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,12 +12,25 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@coreui/chartjs": "^4.0.0",
     "@coreui/coreui": "^5.2.0",
+    "@coreui/icons": "^3.0.1",
+    "@coreui/icons-react": "^2.3.0",
     "@coreui/react": "^5.5.0",
+    "@coreui/react-chartjs": "^3.0.0",
+    "@coreui/utils": "^2.0.2",
+    "@reduxjs/toolkit": "^2.7.0",
     "bootstrap": "^5.3.5",
+    "core-js": "^3.41.0",
+    "date-fns": "^4.1.0",
+    "prop-types": "^15.8.1",
     "react": "^19.0.0",
+    "react-datepicker": "^8.3.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.5.0"
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.5.0",
+    "redux-persist": "^6.0.0",
+    "simplebar-react": "^3.3.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
@@ -26,6 +41,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
+    "sass": "^1.62.1",
     "vite": "^6.2.0"
   }
 }
