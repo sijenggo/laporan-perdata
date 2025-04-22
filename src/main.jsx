@@ -7,6 +7,7 @@ import 'core-js'
 import { PersistGate } from "redux-persist/integration/react";
 import store, { persistor } from './components/store'
 import { useSelector } from 'react-redux'
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
@@ -21,6 +22,8 @@ const DefaultLayout = React.lazy(() => import('./compages/DefaultLayout'))
 
 //Pages
 import { Dashboard, Page404, LaporanBulananPerdata } from './routes';
+
+const queryClient = new QueryClient();
 
 const App = () => {
 	const { isColorModeSet, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
@@ -65,9 +68,9 @@ const root = createRoot(rootElement);
 root.render(
 	<Provider store={store}>
 		<PersistGate loading={null} persistor={persistor}>
-			<StrictMode>
+        	<QueryClientProvider client={queryClient}>
 				<App /> 
-			</StrictMode>
+			</QueryClientProvider>
 		</PersistGate>
 	</Provider>
 );
