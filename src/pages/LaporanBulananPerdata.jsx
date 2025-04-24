@@ -81,9 +81,11 @@ const LaporanBulananPerdata = () =>{
         queryKey: ['dataPerdata', date1, date2],
         queryFn: () =>
         ambilData({
-            column: 'perkara_id, nomor_perkara, alur_perkara_id, tahapan_terakhir_id, tanggal_pendaftaran, diinput_tanggal, diedit_tanggal',
-            from: 'perkara',
-            where: `COALESCE(diedit_tanggal, diinput_tanggal) BETWEEN '${date1}' AND '${date2}'`,
+            column: 'perkara.perkara_id, perkara.nomor_perkara, perkara.alur_perkara_id, perkara.tahapan_terakhir_id, perkara.tanggal_pendaftaran, perkara.diinput_tanggal, perkara.diperbaharui_tanggal, perkara_putusan.tanggal_putusan',
+            from: 'perkara JOIN perkara_putusan ON perkara.perkara_id = perkara_putusan.perkara_id',
+            where: `
+                (perkara.tahapan_terakhir_id != 15 AND perkara.tanggal_pendaftaran BETWEEN '${date1}' AND '${date2}')
+            `,
         }),
     });
     
@@ -119,10 +121,10 @@ const LaporanBulananPerdata = () =>{
             color: 'warning',
             data:{
                 sisa: filteredData.permohonan.filter(item => {
-                    const tahapBukan15 = item.tahapan_terakhir_id !== 15;
-                    const tanggal = new Date(item.tanggal_pendaftaran);
-                    const tidakDiAntara = tanggal < date1 || tanggal > date2;
-                    return tahapBukan15 && tidakDiAntara;
+                    const bukan15 = item.tahapan_terakhir_id !== 15;
+                    const tidakDiAntara = new Date(item.tanggal_putusan) > new Date(date1);
+                    const tidakDiAntara2 = new Date(item.tanggal_pendaftaran) < new Date(date1);
+                    return (tidakDiAntara && tidakDiAntara2) || bukan15;
                 }),
             }
         },
@@ -152,7 +154,8 @@ const LaporanBulananPerdata = () =>{
         },
     ], [filteredData.permohonan]);
 
-    console.log(KomponenLaporan, filteredData.permohonan)
+    console.log(filteredData.permohonan);
+    //console.log(new Date(date1));
 
     return(
         <>
