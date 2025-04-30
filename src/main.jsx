@@ -21,7 +21,7 @@ import { CSpinner, useColorModes } from '@coreui/react';
 const DefaultLayout = React.lazy(() => import('./compages/DefaultLayout'))
 
 //Pages
-import { Dashboard, Page404, LaporanBulananPerdata } from './routes';
+import { Dashboard, Page404, LaporanBulananPerdata, MauEs } from './_nav';
 
 const queryClient = new QueryClient();
 
@@ -52,6 +52,7 @@ const App = () => {
 					<Route index element={<Dashboard />} />
 					<Route path="dashboard" element={<Dashboard />} />
 					<Route path="lapbulperdata" element={<LaporanBulananPerdata />} />
+					<Route path="maues" element={<MauEs />} />
 					<Route path="*" element={<Page404 />} />
 				</Route>
 

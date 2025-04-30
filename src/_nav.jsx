@@ -7,7 +7,28 @@ import {
 } from '@coreui/icons'
 import { CNavItem, CNavTitle } from '@coreui/react'
 
-const _nav = [
+const Dashboard = React.lazy(() => import('./pages/Home'));
+const Page404 = React.lazy(() => import('./pages/Page404'))
+const LaporanBulananPerdata = React.lazy(() => import(`./pages/LaporanBulananPerdata`))
+const MauEs = React.lazy(() => import(`./pages/MauEs`))
+
+const routes = [
+  { path: '/', exact: true, name: 'Home', element: Dashboard },
+  { path: '/dashboard', name: 'Dashboard', element: Dashboard },
+  { path: '/lapbulperdata', name: 'Laporan Bulanan Perdata', element: LaporanBulananPerdata },
+  { path: '/maues', name: 'Mau Es', element: MauEs },
+  { path: '/*', name: '404', element: Page404 },
+]
+
+export {
+  routes,
+  Dashboard,
+  Page404,
+  LaporanBulananPerdata,
+  MauEs
+}
+
+export const _nav = [
   {
     component: CNavItem,
     roles: [],
@@ -17,6 +38,13 @@ const _nav = [
     badge: {
       color: 'info',
     },
+  },
+  {
+    component: CNavItem,
+    roles: [],
+    name: 'Mau Es',
+    to: '/maues',
+    icon: <CIcon icon={cilFolderOpen} customClassName="nav-icon" />,
   },
   {
     component: CNavTitle,
@@ -36,5 +64,3 @@ const _nav = [
     icon: <CIcon icon={cilAccountLogout} customClassName="nav-icon" />,
   },*/
 ]
-
-export default _nav

@@ -10,7 +10,7 @@ import {
 } from '@coreui/react'
 
 import { AppSidebarNav } from './AppSidebarNav'
-import navigation from '../_nav'
+import { _nav as navigation } from '../_nav'
 import { setSidebarShow, setSidebarUnfoldable } from '../components/uiSlice' // Pastikan path ini benar
 import { useOutletContext } from 'react-router-dom' // Import useOutletContext
 
