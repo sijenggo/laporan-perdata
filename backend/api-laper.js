@@ -795,6 +795,7 @@ const queryMap = {
     kep23: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
+            pput.tanggal_putusan AS 'Tgl Putusan',
             pjs.tanggal_sidang AS 'Tgl Sidang',
             pjs.diinput_tanggal AS 'Tgl Jam Diinput',
             pjs.diperbaharui_tanggal AS 'Tgl Jam Diperbaharui',
@@ -810,14 +811,16 @@ const queryMap = {
             perkara_jadwal_sidang AS pjs
         JOIN
             perkara AS p ON pjs.perkara_id = p.perkara_id
+        JOIN
+            perkara_putusan AS pput ON pput.perkara_id = p.perkara_id
         WHERE
-            p.alur_perkara_id NOT IN (114, 118)
+            p.alur_perkara_id NOT IN (114)
         AND
-            (LEFT(pjs.diperbaharui_tanggal, 10) <> pjs.tanggal_sidang)
+            pjs.tanggal_sidang BETWEEN ? AND ?
         AND
-            (LEFT(pjs.tanggal_sidang, 10) BETWEEN ? AND ?)
-            OR
-            (LEFT(pjs.diperbaharui_tanggal, 10) BETWEEN ? AND ?)`,
+            LEFT(pjs.diperbaharui_tanggal, 10) BETWEEN ? AND ?
+        AND
+            LEFT(pjs.diinput_tanggal, 10) BETWEEN ? AND ?`,
     kep24: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kep25: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kel1: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
@@ -861,7 +864,7 @@ app.get("/api/data_eis", (req, res) => {
     if (noDateParams.includes(unsur)) {
       params = [];
     } else if (twoDateParams.includes(unsur)) {
-      params = [date1, date2, date1, date2]; // 👈 dua pasang tanggal
+      params = [date1, date2, date1, date2, date1,date2]; // 👈 dua pasang tanggal
     } else {
       params = [date1, date2]; // default: satu pasang tanggal
     }
