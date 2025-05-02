@@ -174,7 +174,7 @@ const queryMap = {
             diinput_tanggal AS 'Tgl Input',
             CONCAT(DATEDIFF(diinput_tanggal, tanggal_pendaftaran), ' Hari') AS 'Waktu Input',
             IF(
-                DATEDIFF(diinput_tanggal, tanggal_pendaftaran) > 1
+                DATEDIFF(diinput_tanggal, tanggal_pendaftaran) > 0
                 OR
                 diinput_tanggal IS NULL
                 OR
@@ -209,27 +209,615 @@ const queryMap = {
             alur_perkara_id>100 AND alur_perkara_id<>114
         AND 
             (p.tanggal_pendaftaran BETWEEN ? AND ?)`,
-    kep3: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep4: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep5: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep6: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep7: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep8: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep9: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep10: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep11: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep12: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep13: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kep3: `
+        SELECT 
+            nomor_perkara AS 'Nomor Perkara',
+            tanggal_pendaftaran AS 'Tgl Pendaftaran',
+            (
+                SELECT
+                    MIN(pph.tanggal_penetapan)
+                FROM
+                    perkara_hakim_pn AS pph
+                WHERE 
+                    pph.perkara_id = p.perkara_id    
+            ) as 'Tgl Penetapan Majelis/Hakim Pertama',
+            CONCAT(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(pph.tanggal_penetapan)
+                        FROM
+                            perkara_hakim_pn AS pph
+                        WHERE 
+                            pph.perkara_id = p.perkara_id    
+                    ),
+                    tanggal_pendaftaran
+                )
+            , ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(pph.tanggal_penetapan)
+                        FROM
+                            perkara_hakim_pn AS pph
+                        WHERE 
+                            pph.perkara_id = p.perkara_id    
+                    ), 
+                    tanggal_pendaftaran
+                ) > 3
+                OR
+                pp.penetapan_majelis_hakim IS NULL
+                OR
+                pp.penetapan_majelis_hakim = '', 1, 0
+            ) as kesesuaian
+        FROM 
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id = p.perkara_id
+        WHERE 
+            p.alur_perkara_id <> 114 
+        AND 
+            p.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kep4: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.tanggal_pendaftaran AS 'Tgl Pendaftaran',
+            (
+                SELECT 
+                    MIN(ppn.tanggal_penetapan)
+                FROM 
+                    perkara_panitera_pn AS ppn
+                WHERE 
+                    ppn.perkara_id = p.perkara_id
+            ) AS 'Tgl Penetapan Pertama PP',
+            CONCAT(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(ppn.tanggal_penetapan)
+                        FROM
+                            perkara_panitera_pn AS ppn
+                        WHERE 
+                            ppn.perkara_id = p.perkara_id    
+                    ),
+                    tanggal_pendaftaran
+                )
+            , ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(ppn.tanggal_penetapan)
+                        FROM
+                            perkara_panitera_pn AS ppn
+                        WHERE 
+                            ppn.perkara_id = p.perkara_id    
+                    ),
+                    tanggal_pendaftaran
+                ) > 3
+                OR
+                pp.penetapan_panitera_pengganti IS NULL
+                OR
+                pp.penetapan_panitera_pengganti = '', 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id = p.perkara_id
+        WHERE 
+            p.alur_perkara_id <> 114
+        AND 
+            p.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kep5: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.tanggal_pendaftaran AS 'Tgl Pendaftaran',
+            (
+                SELECT 
+                    MIN(ppn.tanggal_penetapan)
+                FROM 
+                    perkara_jurusita AS ppn
+                WHERE 
+                    ppn.perkara_id = p.perkara_id
+            ) AS 'Tgl Penetapan Pertama JS / JSP',
+            CONCAT(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(ppn.tanggal_penetapan)
+                        FROM
+                            perkara_jurusita AS ppn
+                        WHERE 
+                            ppn.perkara_id = p.perkara_id    
+                    ),
+                    tanggal_pendaftaran
+                )
+            , ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(ppn.tanggal_penetapan)
+                        FROM
+                            perkara_jurusita AS ppn
+                        WHERE 
+                            ppn.perkara_id = p.perkara_id    
+                    ),
+                    tanggal_pendaftaran
+                ) > 3
+                OR
+                pp.penetapan_jurusita IS NULL
+                OR
+                pp.penetapan_jurusita = '', 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id = p.perkara_id
+        WHERE 
+            (p.alur_perkara_id <> 114) AND (p.alur_perkara_id < 100)
+        AND 
+            p.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kep6: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.tanggal_pendaftaran AS 'Tgl Pendaftaran',
+            (
+                SELECT 
+                    MIN(ppn.tanggal_penetapan)
+                FROM 
+                    perkara_penetapan_hari_sidang AS ppn
+                WHERE 
+                    ppn.perkara_id = p.perkara_id
+            ) AS 'Tgl Penetapan Pertama Hari Sidang Pertama',
+            CONCAT(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(ppn.tanggal_penetapan)
+                        FROM
+                            perkara_penetapan_hari_sidang AS ppn
+                        WHERE 
+                            ppn.perkara_id = p.perkara_id    
+                    ),
+                    tanggal_pendaftaran
+                )
+            , ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(
+                    (
+                        SELECT
+                            MIN(ppn.tanggal_penetapan)
+                        FROM
+                            perkara_penetapan_hari_sidang AS ppn
+                        WHERE 
+                            ppn.perkara_id = p.perkara_id    
+                    ),
+                    tanggal_pendaftaran
+                ) > 3
+                OR
+                pp.penetapan_hari_sidang IS NULL
+                OR
+                pp.penetapan_hari_sidang = '', 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id = p.perkara_id
+        WHERE 
+            (p.alur_perkara_id <> 114) AND (p.alur_perkara_id <> 118)
+        AND 
+            p.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kep7: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            ppen.tanggal_penuntutan AS 'Tgl Tuntutan',
+            LEFT(ppen.diinput_tanggal, 10) AS 'Tgl Input',
+            pp.panitera_pengganti_text AS 'PP',
+            CONCAT(
+                DATEDIFF(
+                    LEFT(ppen.diinput_tanggal, 10),
+                    ppen.tanggal_penuntutan
+                )
+            , ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(
+                    LEFT(ppen.diinput_tanggal, 10),
+                    ppen.tanggal_penuntutan
+                ) > 0,
+            1, 0) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_penuntutan AS ppen ON ppen.perkara_id=p.perkara_id
+        WHERE 
+            ppen.tanggal_penuntutan BETWEEN ? AND ?
+        AND 
+            (p.alur_perkara_id>100) AND (p.alur_perkara_id<>114)`,
+    kep8: `
+         SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            pput.tanggal_putusan AS 'Tgl Putusan',
+            pput.amar_putusan AS 'Amar Putusan',
+            pput.amar_putusan_dok AS 'Amar Putusan Doc',
+            IF(
+                pput.amar_putusan IS NULL
+                OR
+                pput.amar_putusan = ''
+                OR
+                pput.amar_putusan_dok IS NULL
+                OR
+                pput.amar_putusan_dok = '', 1, 0
+            ) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_putusan AS pput ON pput.perkara_id=p.perkara_id
+        WHERE 
+            (pput.tanggal_putusan BETWEEN ? AND ?)
+        AND 
+            (p.alur_perkara_id<>114)`,
+    kep9: `
+         SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            pput.tanggal_putusan AS 'Tgl Putusan',
+            pput.tanggal_minutasi AS 'Tgl Minutasi',
+            CONCAT(
+                DATEDIFF(
+                    pput.tanggal_minutasi,
+                    pput.tanggal_putusan
+                )
+            , ' Hari') AS 'Waktu Input',
+            pp.panitera_pengganti_text AS 'PP',
+            IF(
+                DATEDIFF(
+                    pput.tanggal_minutasi,
+                    pput.tanggal_putusan
+                ) > 1
+                OR
+                pput.tanggal_minutasi IS NULL
+                OR
+                pput.tanggal_minutasi = ''
+                , 1, 0
+            ) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_putusan AS pput ON pput.perkara_id=p.perkara_id
+        WHERE 
+            (pput.tanggal_putusan BETWEEN ? AND ?)
+        AND 
+            (p.alur_perkara_id<>114)`,
+    kep10: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            pput.tanggal_putusan AS 'Tgl Putusan',
+            pput.tanggal_minutasi AS 'Tgl Minutasi',
+            CONCAT(
+                DATEDIFF(
+                    pput.tanggal_minutasi,
+                    pput.tanggal_putusan
+                )
+            , ' Hari') AS 'Waktu Input',
+            pp.panitera_pengganti_text AS 'PP',
+            (CASE
+                WHEN (p.alur_perkara_id < 100 && DATEDIFF(pput.tanggal_minutasi, pput.tanggal_putusan) > 14 ) OR (pput.tanggal_minutasi IS NULL) OR (pput.tanggal_minutasi = '') THEN 1
+                WHEN (p.alur_perkara_id < 100 && DATEDIFF(pput.tanggal_minutasi, pput.tanggal_putusan) > 7 ) OR (pput.tanggal_minutasi IS NULL) OR (pput.tanggal_minutasi = '') THEN 1
+                ELSE 0
+            END) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_putusan AS pput ON pput.perkara_id=p.perkara_id
+        WHERE 
+            (pput.tanggal_putusan BETWEEN ? AND ?)
+        AND 
+            (p.alur_perkara_id<>114)`,
+    kep11: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            perban.nomor_perkara_banding AS 'Nomor Perkara Banding',
+            perban.permohonan_banding AS 'Tgl Permohonan Banding',
+            perban.diinput_tanggal AS 'Tgl Jam Input Banding',
+            CONCAT(DATEDIFF(LEFT(perban.diinput_tanggal, 10),permohonan_banding), ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(LEFT(perban.diinput_tanggal, 10), permohonan_banding) > 0
+                OR
+                perban.diinput_tanggal IS NULL
+                OR
+                perban.diinput_tanggal = '', 1, 0
+            ) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_banding AS perban ON perban.perkara_id=p.perkara_id
+        WHERE 
+            perban.diinput_tanggal BETWEEN ? AND ?
+        AND 
+            (p.alur_perkara_id<>114)
+        ORDER BY
+            perban.permohonan_banding DESC`,
+    kep12: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            perkas.nomor_perkara_kasasi AS 'Nomor Perkara Kasasi',
+            perkas.permohonan_kasasi AS 'Tgl Permohonan Kasasi',
+            perkas.diinput_tanggal AS 'Tgl Jam Input Kasasi',
+            CONCAT(DATEDIFF(LEFT(perkas.diinput_tanggal, 10),permohonan_kasasi), ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(LEFT(perkas.diinput_tanggal, 10), permohonan_kasasi) > 0
+                OR
+                perkas.diinput_tanggal IS NULL
+                OR
+                perkas.diinput_tanggal = '', 1, 0
+            ) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN
+            perkara_kasasi AS perkas ON perkas.perkara_id=p.perkara_id
+        WHERE 
+            permohonan_kasasi BETWEEN ? AND ?
+        AND 
+            (p.alur_perkara_id<>114)
+        ORDER BY
+            permohonan_kasasi DESC`,
+    kep13: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            perpk.nomor_perkara_kasasi AS 'Nomor Perkara Kasasi',
+            perpk.permohonan_pk AS 'Tgl Permohonan PK',
+            perpk.diinput_tanggal AS 'Tgl Jam Input Permohonan PK',
+            CONCAT(DATEDIFF(LEFT(perpk.diinput_tanggal, 10), permohonan_pk), ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(LEFT(perpk.diinput_tanggal, 10), permohonan_pk) > 0
+                OR
+                perpk.diinput_tanggal IS NULL
+                OR
+                perpk.diinput_tanggal = '', 1, 0
+            ) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_pk AS perpk ON perpk.perkara_id=p.perkara_id
+        WHERE 
+            permohonan_pk BETWEEN ? AND ?
+        AND 
+            (p.alur_perkara_id<>114)
+        ORDER BY
+            permohonan_pk DESC`,
     kep14: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kep15: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kep16: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep17: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep18: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep19: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep20: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep21: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep22: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep23: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kep17: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pput.tanggal_putusan AS 'Tgl Putusan',
+            ppro.diinput_tanggal AS 'Tgl Input Pemberitahuan Putusan',
+            CONCAT(DATEDIFF(LEFT(ppro.diinput_tanggal, 10), kurung.tanggal_pemberitahuan_putusan_min), ' Hari') AS 'Waktu Input Pemberitahuan Putusan',
+            IF(
+                DATEDIFF(
+                    LEFT(ppro.diinput_tanggal, 10)
+                    ,kurung.tanggal_pemberitahuan_putusan_min
+                ) > 1, 
+            1, 0) AS kesesuaian  
+        FROM 
+            (
+                SELECT 
+                    perkara_id,
+                    MIN(tanggal_pemberitahuan_putusan) AS tanggal_pemberitahuan_putusan_min
+                FROM 
+                    perkara_putusan_pemberitahuan_putusan 
+                GROUP BY 
+                    perkara_id
+            ) AS kurung
+        INNER JOIN 
+            perkara AS p ON kurung.perkara_id = p.perkara_id
+        INNER JOIN
+            perkara_putusan AS pput ON pput.perkara_id = kurung.perkara_id
+        LEFT JOIN 
+            perkara_proses AS ppro ON kurung.perkara_id = ppro.perkara_id AND ppro.proses_id = 218
+        WHERE
+            (
+                p.alur_perkara_id <> 114
+                AND
+                p.alur_perkara_id <> 2
+            )
+        AND 
+            (kurung.tanggal_pemberitahuan_putusan_min BETWEEN ? AND ?) `,
+    kep18: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.tanggal_pendaftaran AS 'Tgl Pendaftaran',
+            kurung.tanggal_penetapan AS 'Tgl Penetapan Majelis/Hakim',
+            kurung.diinput_tanggal AS 'Tgl Jam Input Penetapan Majelis Hakim',
+            CONCAT(DATEDIFF(LEFT(kurung.diinput_tanggal, 10), tanggal_penetapan), ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(LEFT(kurung.diinput_tanggal, 10), tanggal_penetapan) > 0
+                OR
+                kurung.diinput_tanggal IS NULL
+                OR
+                kurung.diinput_tanggal = '', 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            (
+                SELECT 
+                    * 
+                FROM 
+                    perkara_hakim_pn 
+                WHERE 
+                    perkara_hakim_pn.tanggal_penetapan BETWEEN ? AND ?
+                GROUP BY
+                    perkara_id
+            ) AS kurung ON kurung.perkara_id=p.perkara_id
+        WHERE 
+            p.alur_perkara_id<>114`,
+    kep19: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.tanggal_pendaftaran AS 'Tgl Pendaftaran',
+            (
+                SELECT 
+                    MAX(ppn.tanggal_penetapan)
+                FROM 
+                    perkara_panitera_pn AS ppn
+                WHERE 
+                    ppn.perkara_id = p.perkara_id
+            ) AS 'Tgl Penetapan Terbaru PP',
+            (
+                SELECT 
+                    COUNT(*)
+                FROM 
+                    perkara_panitera_pn AS ppn
+                WHERE 
+                    ppn.perkara_id = p.perkara_id
+            ) AS 'Jumlah Penetapan PP',
+            pp.panitera_pengganti_text AS 'PP',
+            IF(
+                DATEDIFF(
+                    (
+                        SELECT 
+                            MAX(ppn.tanggal_penetapan)
+                        FROM 
+                            perkara_panitera_pn AS ppn
+                        WHERE 
+                            ppn.perkara_id = p.perkara_id
+                    ), 
+                    p.tanggal_pendaftaran
+                ) > 1
+            , 1, 0) AS kesesuaian
+        FROM
+            perkara as p
+        JOIN
+            perkara_penetapan AS pp ON pp.perkara_id = p.perkara_id
+        WHERE 
+            p.alur_perkara_id <> 114
+        AND 
+            p.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kep20: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            kurung.tanggal_penetapan AS 'Tgl Penetapan Hari Sidang',
+            LEFT(kurung.diinput_tanggal, 10) AS 'Tgl Input Penetapan',
+            CONCAT(DATEDIFF(LEFT(kurung.diinput_tanggal, 10), kurung.tanggal_penetapan), ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(LEFT(kurung.diinput_tanggal, 10), kurung.tanggal_penetapan) > 1
+                OR
+                kurung.diinput_tanggal IS NULL
+                OR
+                kurung.diinput_tanggal = '', 1, 0
+            ) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN 
+            (
+                SELECT 
+                    * 
+                FROM 
+                    perkara_penetapan_hari_sidang 
+                WHERE 
+                    perkara_penetapan_hari_sidang.tanggal_penetapan BETWEEN ? AND ?
+            ) AS kurung ON kurung.perkara_id=p.perkara_id
+        WHERE 
+            alur_perkara_id<>114`,
+    kep21: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            kurung.tanggal_penetapan AS 'Tgl Penetapan JS / JSP',
+            LEFT(kurung.diinput_tanggal, 10) AS 'Tgl Input Penetapan JS / JSP',
+            CONCAT(DATEDIFF(LEFT(kurung.diinput_tanggal, 10), kurung.tanggal_penetapan), ' Hari') AS 'Waktu Input',
+            IF(
+                DATEDIFF(LEFT(kurung.diinput_tanggal, 10), kurung.tanggal_penetapan) > 1
+                OR
+                kurung.diinput_tanggal IS NULL
+                OR
+                kurung.diinput_tanggal = '', 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            (
+                SELECT 
+                    * 
+                FROM 
+                    perkara_jurusita 
+                WHERE 
+                    perkara_jurusita.tanggal_penetapan BETWEEN ? AND ?
+                GROUP BY 
+                    perkara_jurusita.perkara_id
+            ) AS kurung ON kurung.perkara_id=p.perkara_id
+        WHERE 
+            (alur_perkara_id <> 114) AND (alur_perkara_id < 100)`,
+    kep22: `
+        SELECT 
+            dm.pn_asal_text AS 'PN Pengaju',
+            dpm.nomor_relaas AS 'Nomor Relaas',
+            dpm.tgl_relaas AS 'Tgl Relaas',
+            dpm.tgl_pengiriman_relaas AS 'Tgl Pengiriman Relaas',
+            dpm.jurusita_nama AS 'Jurusita',
+            CONCAT(DATEDIFF(dpm.tgl_pengiriman_relaas, dpm.tgl_relaas), ' Hari') AS 'Waktu Input',
+            dfm.file AS 'File',
+            IF(
+                DATEDIFF(dpm.tgl_pengiriman_relaas, dpm.tgl_relaas) > 1
+                OR
+                dpm.tgl_pengiriman_relaas IS NULL
+                OR
+                dpm.tgl_pengiriman_relaas = '', 1, 0
+            ) AS kesesuaian
+        FROM
+            delegasi_masuk AS dm
+        JOIN
+            delegasi_proses_masuk AS dpm ON dpm.delegasi_id = dm.id
+        JOIN
+            delegasi_file_masuk AS dfm ON dfm.delegasi_id = dm.id AND dfm.status_file = 2
+        WHERE 
+            dpm.tgl_relaas BETWEEN ? AND ?
+        AND
+            dpm.id_status_delegasi <> 9
+        GROUP BY 
+            dpm.delegasi_id`,
+    kep23: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pjs.tanggal_sidang AS 'Tgl Sidang',
+            pjs.diinput_tanggal AS 'Tgl Jam Diinput',
+            pjs.diperbaharui_tanggal AS 'Tgl Jam Diperbaharui',
+            CONCAT(
+                DATEDIFF(
+                LEFT(pjs.diperbaharui_tanggal,10)
+                ,tanggal_sidang
+                ) <> 0
+            , ' Hari') AS 'Waktu Input',
+            pjs.ditunda AS 'Ket',
+            1 AS kesesuaian
+        FROM
+            perkara_jadwal_sidang AS pjs
+        JOIN
+            perkara AS p ON pjs.perkara_id = p.perkara_id
+        WHERE
+            p.alur_perkara_id NOT IN (114, 118)
+        AND
+            (LEFT(pjs.diperbaharui_tanggal, 10) <> pjs.tanggal_sidang)
+        AND
+            (LEFT(pjs.tanggal_sidang, 10) BETWEEN ? AND ?)
+            OR
+            (LEFT(pjs.diperbaharui_tanggal, 10) BETWEEN ? AND ?)`,
     kep24: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kep25: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kel1: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
@@ -266,9 +854,17 @@ app.get("/api/data_eis", (req, res) => {
   
     // ✅ Buat list unsur yang TIDAK butuh tanggal
     const noDateParams = ['kin2', 'kin3'];
+    const twoDateParams = ['kep23'];
   
-    // Kalau unsur tidak ada di list noDateParams, berarti dia butuh date1 & date2
-    const params = noDateParams.includes(unsur) ? [] : [date1, date2];
+    let params;
+
+    if (noDateParams.includes(unsur)) {
+      params = [];
+    } else if (twoDateParams.includes(unsur)) {
+      params = [date1, date2, date1, date2]; // 👈 dua pasang tanggal
+    } else {
+      params = [date1, date2]; // default: satu pasang tanggal
+    }
   
     // Opsional: validasi kalau date1/date2 kosong
     if (!noDateParams.includes(unsur) && (!date1 || !date2)) {

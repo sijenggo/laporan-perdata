@@ -37,9 +37,10 @@ import {
 import CIcon from '@coreui/icons-react'
 import {
   cilCloudDownload,
-  cilWarning
+  cilWarning,
+  cilReload
 } from '@coreui/icons'
-import { useQuery, useQueries } from '@tanstack/react-query';
+import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 
 import axios from '../components/axois'
 const SELECT = '/data_eis';
@@ -73,13 +74,17 @@ const formatValueByKey = (key, value) => {
         if (value !== null && value !== '-') {
             return formattedBiaya(value);
         }
+    } else if (/Amar/i.test(key)) {
+        if (value !== null && value !== '-') {
+            return value = value.length > 25 ? value.slice(0, 25) + '...' : value;
+        }
     }else if (/File/i.test(key)) {
         const baseUrl = "http://192.168.3.7/SIPP311/resources/file/delegasi/masuk/";
         if (value !== null && value !== '-') {
             const fileUrl = `${baseUrl}${value}`;
             return (
                 <CButton 
-                    variant="secondary" 
+                    color="secondary" 
                     size="sm" 
                     onClick={() => window.open(fileUrl, '_blank')}
                 >
@@ -117,6 +122,8 @@ const MauEs = () =>{
           setDate2(date2);
         }
     };
+
+    const queryClient = useQueryClient();
 
     const [activeTab, setActiveTab] = useState('kinerja');
     const [visible, setVisible] = useState(false);
@@ -417,6 +424,12 @@ const MauEs = () =>{
         }))
     });
 
+    const refreshQueries = () => {
+        queries.forEach((query) => {
+            queryClient.invalidateQueries(query.queryKey);
+        });
+    }
+
     const dataMap = useMemo(() => {
         return allUnsurKeys.reduce((acc, unsur, i) => {
           acc[unsur] = queries[i];
@@ -430,14 +443,15 @@ const MauEs = () =>{
         <>
             <CCard className="mb-4">
                 <CCardBody>
+                <CButton onClick={() => refreshQueries()} color='primary' className="float-end"><CIcon icon={cilReload} size="lg" /></CButton>
                     <CRow className='mb-2'>
-                        <CCol xs={12} sm={12} md={8} xl={8}>
+                        <CCol>
                         <h4 className="card-title mb-0">
                             Monitoring Aplikasi EIS dan SIPP
                         </h4>
                         <div className="small text-body-secondary mt-1">{formattedBulanSaja(date1)} - {formattedBulanSaja(date2)} {formattedTahunSaja(date1)}</div>
                         </CCol>
-                        <CCol xs={12} sm={12} md={4} xl={4} className="d-none d-md-block">                        
+                        <CCol xs={12} sm={12} md={4} xl={4} className="d-md-block">                        
                             <div className="vstack gap-0">
                                 <h5 className='mb-0 me-2 text-center'>Periode</h5>
                                 <DatePicker 
