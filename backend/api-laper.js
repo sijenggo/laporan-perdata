@@ -188,7 +188,7 @@ const queryMap = {
     kep2: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
-            pp.panitera_pengganti_text AS 'PP',
+            pppn.panitera_nama AS 'PP',
             CASE 
                 WHEN EXISTS (
                     SELECT 1 FROM perkara_barang_bukti pbb WHERE pbb.perkara_id = p.perkara_id
@@ -203,8 +203,8 @@ const queryMap = {
             ) AS kesesuaian
         FROM
             perkara AS p
-        LEFT JOIN
-            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
         WHERE 
             alur_perkara_id>100 AND alur_perkara_id<>114
         AND 
@@ -414,7 +414,7 @@ const queryMap = {
             p.nomor_perkara AS 'Nomor Perkara',
             ppen.tanggal_penuntutan AS 'Tgl Tuntutan',
             LEFT(ppen.diinput_tanggal, 10) AS 'Tgl Input',
-            pp.panitera_pengganti_text AS 'PP',
+            pppn.panitera_nama AS 'PP',
             CONCAT(
                 DATEDIFF(
                     LEFT(ppen.diinput_tanggal, 10),
@@ -429,8 +429,8 @@ const queryMap = {
             1, 0) AS kesesuaian
         FROM
             perkara AS p
-        JOIN
-            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
         JOIN 
             perkara_penuntutan AS ppen ON ppen.perkara_id=p.perkara_id
         WHERE 
@@ -473,22 +473,22 @@ const queryMap = {
                     pput.tanggal_putusan
                 )
             , ' Hari') AS 'Waktu Input',
-            pp.panitera_pengganti_text AS 'PP',
+            pppn.panitera_nama AS 'PP',
             IF(
                 DATEDIFF(
                     pput.tanggal_minutasi,
                     pput.tanggal_putusan
                 ) > 1
                 OR
-                pput.tanggal_minutasi IS NULL
+                    pput.tanggal_minutasi IS NULL
                 OR
-                pput.tanggal_minutasi = ''
+                    pput.tanggal_minutasi = ''
                 , 1, 0
             ) AS kesesuaian
         FROM
             perkara AS p
-        JOIN
-            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
         JOIN 
             perkara_putusan AS pput ON pput.perkara_id=p.perkara_id
         WHERE 
@@ -506,7 +506,7 @@ const queryMap = {
                     pput.tanggal_putusan
                 )
             , ' Hari') AS 'Waktu Input',
-            pp.panitera_pengganti_text AS 'PP',
+            pppn.panitera_nama AS 'PP',
             (CASE
                 WHEN (p.alur_perkara_id < 100 && DATEDIFF(pput.tanggal_minutasi, pput.tanggal_putusan) > 14 ) OR (pput.tanggal_minutasi IS NULL) OR (pput.tanggal_minutasi = '') THEN 1
                 WHEN (p.alur_perkara_id < 100 && DATEDIFF(pput.tanggal_minutasi, pput.tanggal_putusan) > 7 ) OR (pput.tanggal_minutasi IS NULL) OR (pput.tanggal_minutasi = '') THEN 1
@@ -514,8 +514,8 @@ const queryMap = {
             END) AS kesesuaian
         FROM
             perkara AS p
-        JOIN
-            perkara_penetapan AS pp ON pp.perkara_id=p.perkara_id
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
         JOIN 
             perkara_putusan AS pput ON pput.perkara_id=p.perkara_id
         WHERE 
@@ -688,7 +688,7 @@ const queryMap = {
                 WHERE 
                     ppn.perkara_id = p.perkara_id
             ) AS 'Jumlah Penetapan PP',
-            pp.panitera_pengganti_text AS 'PP',
+            pppn.panitera_nama AS 'PP',
             IF(
                 DATEDIFF(
                     (
@@ -704,8 +704,8 @@ const queryMap = {
             , 1, 0) AS kesesuaian
         FROM
             perkara as p
-        JOIN
-            perkara_penetapan AS pp ON pp.perkara_id = p.perkara_id
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
         WHERE 
             p.alur_perkara_id <> 114
         AND 
@@ -795,14 +795,13 @@ const queryMap = {
     kep23: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
-            pput.tanggal_putusan AS 'Tgl Putusan',
             pjs.tanggal_sidang AS 'Tgl Sidang',
             pjs.diinput_tanggal AS 'Tgl Jam Diinput',
             pjs.diperbaharui_tanggal AS 'Tgl Jam Diperbaharui',
             CONCAT(
                 DATEDIFF(
-                LEFT(pjs.diperbaharui_tanggal,10)
-                ,tanggal_sidang
+                    LEFT(pjs.diperbaharui_tanggal,10)
+                    ,tanggal_sidang
                 ) <> 0
             , ' Hari') AS 'Waktu Input',
             pjs.ditunda AS 'Ket',
@@ -816,16 +815,162 @@ const queryMap = {
         WHERE
             p.alur_perkara_id NOT IN (114)
         AND
+            (
+                pjs.tanggal_sidang BETWEEN ? AND ?
+                OR
+                LEFT(pjs.diinput_tanggal, 10) BETWEEN ? AND ?
+                OR
+                LEFT(pjs.diperbaharui_tanggal, 10) BETWEEN ? AND ?
+                OR
+                LEFT(pjs.diedit_tanggal, 10) BETWEEN ? AND ?
+            )
+        GROUP BY
+            pjs.id`,
+    kep24: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pt.tanggal_surat AS 'Tgl Surat',
+            LEFT(pt.diinput_tanggal, 10) AS 'Tgl Input', 
+            CONCAT(
+                DATEDIFF(
+                    LEFT(pt.diinput_tanggal, 10)
+                    ,pt.tanggal_surat
+                )
+            , ' Hari') AS 'Waktu Input',
+            pppn.panitera_nama AS 'PP',
+            IF(
+                DATEDIFF(
+                    LEFT(pt.diinput_tanggal, 10)
+                    ,pt.tanggal_surat
+                ) > 0
+            , 1, 0) AS kesesuaian
+        FROM 
+            penahanan_terdakwa AS pt
+        JOIN 
+            perkara AS p ON pt.perkara_id = p.perkara_id
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
+        WHERE 
+            pt.tanggal_surat BETWEEN ? AND ?
+        AND 
+            pt.jenis_penahanan_id IN (7,8)
+        ORDER BY
+            p.tanggal_pendaftaran`,
+    kep25: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            pjs.tanggal_sidang AS 'Tgl Sidang',
+            pjs.agenda AS 'Agenda',
+            pjs.diinput_tanggal AS 'Tgl Jam Input',
+            1 AS kesesuaian
+        FROM 
+            perkara_jadwal_sidang AS pjs
+        JOIN 
+            perkara AS p ON pjs.perkara_id = p.perkara_id
+        WHERE 
             pjs.tanggal_sidang BETWEEN ? AND ?
-        AND
-            LEFT(pjs.diperbaharui_tanggal, 10) BETWEEN ? AND ?
-        AND
-            LEFT(pjs.diinput_tanggal, 10) BETWEEN ? AND ?`,
-    kep24: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kep25: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel1: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel2: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel3: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
+        AND 
+            p.alur_perkara_id NOT IN (114)
+        AND 
+            (
+                pjs.agenda REGEXP '[[:<:]]putusan[[:>:]]'
+                OR
+                pjs.agenda REGEXP '[[:<:]]putus[[:>:]]'
+                OR 
+                pjs.agenda REGEXP '[[:<:]]penetapan[[:>:]]'
+                AND
+                pjs.agenda NOT LIKE '%mediasi%'
+                AND
+                pjs.agenda NOT LIKE '%kembali%'
+                AND
+                pjs.agenda NOT LIKE '%putusan sela%'
+            )`,
+    kel1: `
+        SELECT
+            p.nomor_perkara as 'Nomor Perkara',
+            pppn.panitera_nama AS PP,
+            p.tanggal_pendaftaran as 'Tgl Pendaftaran',
+            CASE
+                WHEN p.alur_perkara_id < 100 AND p.petitum_dok IS NULL THEN 'Petitum belum diupload'
+                WHEN p.alur_perkara_id > 100 AND p.dakwaan_dok IS NULL THEN 'Dakwaan belum diupload'
+                ELSE 'Dokumen lengkap'
+            END AS Dokumen,
+            CASE
+                WHEN p.alur_perkara_id < 100 AND p.petitum_dok IS NULL THEN 1
+                WHEN p.alur_perkara_id > 100 AND p.dakwaan_dok IS NULL THEN 1
+                ELSE 0
+            END AS kesesuaian
+        FROM 
+            perkara as p
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
+        WHERE 
+            p.tanggal_pendaftaran BETWEEN ? AND ?
+        AND 
+            p.alur_perkara_id NOT IN (114)`,
+    kel2: `
+        SELECT 
+            p.nomor_perkara as 'Nomor Perkara',
+            pjs.tanggal_sidang as 'Tgl Sidang',
+            pjs.agenda as 'Agenda',
+            LEFT(pp.diinput_tanggal, 10) as 'Tgl Input Data Saksi',
+            pppn.panitera_nama AS PP,
+            IF( 
+                EXISTS (
+                    SELECT 1 FROM pihak AS pp2 WHERE pp2.id = pp.pihak_id
+                ), 'Ada data saksi', 'Tidak ada data saksi'
+            ) AS 'Data Saksi',
+            1 AS kesesuaian
+        FROM 
+            perkara_pihak5 AS pp
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = pp.perkara_id AND pppn.aktif = 'Y' 
+        JOIN 
+            perkara_jadwal_sidang AS pjs ON pp.perkara_id = pjs.perkara_id
+        JOIN 
+            perkara AS p ON pp.perkara_id = p.perkara_id
+        JOIN 
+            perkara_penetapan as ppn ON ppn.perkara_id = pp.perkara_id
+        WHERE 
+            pjs.tanggal_sidang BETWEEN ? AND ?
+        AND 
+            pjs.agenda LIKE '%saksi%'
+        GROUP BY 
+            p.nomor_perkara
+        ORDER BY 
+            pjs.tanggal_sidang ASC`,
+    kel3: `
+         SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pppn.panitera_nama AS PP,
+            pjs.agenda AS 'Agenda',
+            pjs.tanggal_sidang AS 'Tgl Sidang',
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 FROM perkara_penuntutan pp2 WHERE pp2.perkara_id = p.perkara_id
+                ) 
+                THEN 'Ada dokumen tuntutan'
+                ELSE 'Tidak ada dokumen tuntutan'
+            END AS 'Data Tuntutan',
+            1 AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
+        JOIN 
+            perkara_jadwal_sidang AS pjs ON pjs.perkara_id = p.perkara_id
+        JOIN 
+            perkara_penetapan as ppn ON ppn.perkara_id = p.perkara_id
+        WHERE 
+            pjs.tanggal_sidang BETWEEN ? AND ?
+        AND 
+            pjs.tanggal_sidang <= CURDATE()
+        AND 
+            (pjs.agenda LIKE '%tuntutan%' OR pjs.agenda LIKE '%penuntutan%')
+        GROUP BY 
+            p.nomor_perkara
+        ORDER BY 
+            pjs.tanggal_sidang ASC`,
     kel4: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kel5: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kel6: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
@@ -846,7 +991,7 @@ const queryMap = {
 app.get("/api/data_eis", (req, res) => {
     const { unsur, date1, date2 } = req.query;
   
-    logger.info(`Log API select Data EIS - unsur: ${unsur}`);
+    //logger.info(`Log API select Data EIS - unsur: ${unsur}`);
   
     if (!unsur || !queryMap[unsur]) {
       logger.error("Unsur tidak valid");
@@ -864,7 +1009,7 @@ app.get("/api/data_eis", (req, res) => {
     if (noDateParams.includes(unsur)) {
       params = [];
     } else if (twoDateParams.includes(unsur)) {
-      params = [date1, date2, date1, date2, date1,date2]; // 👈 dua pasang tanggal
+      params = [date1, date2, date1, date2, date1, date2, date1, date2]; // 👈 dua pasang tanggal
     } else {
       params = [date1, date2]; // default: satu pasang tanggal
     }
@@ -880,7 +1025,7 @@ app.get("/api/data_eis", (req, res) => {
         return res.status(500).json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
       }
   
-      logger.info(`Data berhasil diambil untuk unsur ${unsur}`);
+      //logger.info(`Data berhasil diambil untuk unsur ${unsur}`);
       res.json({ success: true, message: "Query berhasil", data: result });
     });
 });

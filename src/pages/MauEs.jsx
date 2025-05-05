@@ -321,12 +321,12 @@ const MauEs = () =>{
                 {
                     unsur: 'kel2',
                     judul: '2. Pencatatan Saksi',
-                    detail: 'Kelengkapan pencatatan Data Saksi',
+                    detail: 'Kelengkapan pencatatan Data Saksi (Query masih tidak pasti)',
                 },
                 {
                     unsur: 'kel3',
                     judul: '3. E-Document Tuntutan',
-                    detail: 'Kelengkapan Dokumen Elektronik Tuntutan',
+                    detail: 'Kelengkapan Dokumen Elektronik Tuntutan (Query masih tidak pasti)',
                 },
                 {
                     unsur: 'kel4',
