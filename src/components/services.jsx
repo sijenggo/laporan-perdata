@@ -15,8 +15,19 @@ export const formattedTglJam = (date) =>{
 export const formattedBulanSaja = (date) =>{
     return format(date, 'MMMM', {locale: id});
 };
+
 export const formattedTahunSaja = (date) =>{
     return format(date, 'yyyy', {locale: id});
+};
+
+export const formattedBiaya = (value) => {
+	if (isNaN(value) || value === null) return "Rp 0";
+  
+	return new Intl.NumberFormat("id-ID", {
+	  style: "currency",
+	  currency: "IDR",
+	  minimumFractionDigits: 0,
+	}).format(value);
 };
 
 //fungsi kategorikan perkara

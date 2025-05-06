@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 import DatePicker from 'react-datepicker'
 import { subMonths } from "date-fns";
 import { id } from 'date-fns/locale';
-import { formattedBulanSaja, formattedDate, formattedTgl, formattedTglJam, formattedTahunSaja, alur_permohonan, alur_gugatan, alur_gugatan_sederhana } from '../components/services';
+import { formattedBulanSaja, formattedDate, formattedTgl, formattedTglJam, formattedTahunSaja, formattedBiaya, alur_permohonan, alur_gugatan, alur_gugatan_sederhana } from '../components/services';
 
 import {
   CCard,

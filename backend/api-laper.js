@@ -971,12 +971,180 @@ const queryMap = {
             p.nomor_perkara
         ORDER BY 
             pjs.tanggal_sidang ASC`,
-    kel4: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel5: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel6: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel7: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel8: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kel9: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kel4: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pjs.agenda AS 'Agenda',
+            pjs.tanggal_sidang AS 'Tgl Sidang',
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1 FROM perkara_putusan pp2 WHERE pp2.perkara_id = p.perkara_id
+                ) 
+                THEN 'Ada dokumen putusan'
+                ELSE 'Tidak ada dokumen putusan'
+            END AS 'Data Putusan',
+            IF(
+                EXISTS (
+                    SELECT 1 FROM perkara_putusan pp2 WHERE pp2.perkara_id = p.perkara_id
+                ), 0, 1 
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            perkara_jadwal_sidang AS pjs ON pjs.perkara_id = p.perkara_id
+        WHERE 
+            pjs.tanggal_sidang BETWEEN ? AND ?
+        AND 
+            pjs.tanggal_sidang <= CURDATE()
+        AND 
+            p.alur_perkara_id NOT IN (114)
+        AND 
+            (pjs.agenda LIKE '%putusan%' OR pjs.agenda LIKE '%penetapan%')
+        AND 
+            (
+                pjs.agenda NOT LIKE '%sela%'
+                AND 
+                pjs.agenda NOT LIKE '%putusan sela%'
+                AND 
+                pjs.agenda NOT LIKE '%penetapan sela%'
+                AND 
+                pjs.agenda NOT LIKE '%kembali%'
+                AND 
+                pjs.agenda NOT LIKE '%mediasi%'
+            )
+        GROUP BY 
+            p.nomor_perkara
+        ORDER BY 
+            pjs.tanggal_sidang ASC`,
+    kel5: `
+         SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            CASE(pm.hasil_mediasi)
+                WHEN 'Y1' THEN 'Berhasil Dengan Kesepatakan'
+                WHEN 'Y2' THEN 'Berhasil Dengan Pencabutan'
+                WHEN 'S' THEN 'Berhasil Sebagian'
+                WHEN 'T' THEN 'Tidak Berhasil'
+                WHEN 'D' THEN 'Tidak dapat dilaksanakan'
+                ELSE 'Tidak ada data'
+            END AS 'Hasil Mediasi',
+            pm.mediator_text AS 'Mediator',
+            pm.tgl_laporan_mediator AS 'Tgl Laporan Mediator',
+            IF(
+                pm.tgl_laporan_mediator IS NULL
+                OR
+                pm.tgl_laporan_mediator = ''
+                , 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara_mediasi AS pm
+        JOIN 
+            perkara AS p ON pm.perkara_id = p.perkara_id
+        WHERE 
+            pm.keputusan_mediasi BETWEEN ? AND ?
+        ORDER BY 
+            pm.keputusan_mediasi ASC`,
+    kel6: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            CASE(pd.kesepakatan_melaksanakan_diversi)
+                WHEN 1 THEN 'Sepakat'
+                ELSE 'Tidak Sepakat'
+            END AS 'Kesepakatan Diversi',
+            CASE(pd.hasil_diversi)
+                WHEN 1 THEN 'Diversi Berhasil'
+                ELSE 'Diversi Gagal'
+            END AS 'Hasil Diversi',
+            pd.tgl_laporan_hakim AS 'Tgl Laporan Diversi',
+            IF(
+                pd.tgl_laporan_hakim IS NULL
+                OR
+                pd.tgl_laporan_hakim = '', 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara_diversi AS pd
+        JOIN 
+            perkara AS p ON pd.perkara_id = p.perkara_id
+        WHERE 
+            pd.tgl_penetapan_musyawarah BETWEEN ? AND ?            
+        ORDER BY 
+            pd.tgl_penetapan_musyawarah ASC`,
+    kel7: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.nilai_sengketa AS 'Biaya Nilai Sengketa',
+            IF(
+                p.nilai_sengketa IS NULL
+                OR
+                p.nilai_sengketa = ''
+                , 1, 0
+            ) AS kesesuaian           
+        FROM
+            perkara AS p
+        WHERE
+            p.tanggal_pendaftaran BETWEEN ? AND ?
+        AND
+            p.alur_perkara_id IN (8, 17)
+        ORDER BY 
+            p.tanggal_pendaftaran ASC`,
+    kel8: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pppn.panitera_nama AS PP,
+            pjs.agenda AS 'Agenda',
+            pjs.tanggal_sidang AS 'Tgl Sidang',
+            CASE 
+                WHEN pjs.edoc_bas IS NOT NULL THEN 'Ada dokumen BAS'
+                ELSE 'Tidak ada dokumen BAS'
+            END AS 'Dokumen BAS',
+            IF(
+                pjs.edoc_bas IS NULL, 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
+        JOIN 
+            perkara_penetapan as ppn ON ppn.perkara_id = p.perkara_id
+        JOIN 
+            perkara_jadwal_sidang as pjs ON pjs.perkara_id = p.perkara_id
+        WHERE
+            pjs.tanggal_sidang BETWEEN ? AND ?
+        AND 
+            p.alur_perkara_id NOT IN (114)
+        ORDER BY 
+            pjs.tanggal_sidang ASC;`,
+    kel9: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pphs.tanggal_penetapan AS 'Tgl Penetapan',
+            pphs.tanggal_sidang AS 'Tgl Sidang',
+            vp.nama AS 'Nama Pihak',
+            vp.status_perkara AS 'Status Pihak',
+            1 AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan_hari_sidang AS pphs ON pphs.perkara_id = p.perkara_id
+        JOIN
+            v_pihak_perkara AS vp ON vp.perkara_id = p.perkara_id
+        WHERE
+            (
+                pphs.tanggal_penetapan BETWEEN ? AND ?
+                OR
+                pphs.tanggal_sidang BETWEEN ? AND ?
+            )
+        AND
+            (
+                p.alur_perkara_id NOT IN (114)
+                AND
+                p.alur_perkara_id < 100
+            )
+        AND
+            (
+                vp.status_perkara NOT LIKE '%saksi%'
+            )
+        ORDER BY
+            pphs.tanggal_penetapan ASC`,
     kel10: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kel11: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kes1: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
@@ -1002,14 +1170,17 @@ app.get("/api/data_eis", (req, res) => {
   
     // ✅ Buat list unsur yang TIDAK butuh tanggal
     const noDateParams = ['kin2', 'kin3'];
-    const twoDateParams = ['kep23'];
+    const twoDateParams = ['kel9'];
+    const fourDateParams = ['kep23'];
   
     let params;
 
     if (noDateParams.includes(unsur)) {
       params = [];
-    } else if (twoDateParams.includes(unsur)) {
-      params = [date1, date2, date1, date2, date1, date2, date1, date2]; // 👈 dua pasang tanggal
+    }else if (twoDateParams.includes(unsur)) {
+        params = [date1, date2, date1, date2]; // 👈 satu pasang tanggal
+    } else if (fourDateParams.includes(unsur)) {
+      params = [date1, date2, date1, date2, date1, date2, date1, date2]; // 👈 empat pasang tanggal
     } else {
       params = [date1, date2]; // default: satu pasang tanggal
     }
