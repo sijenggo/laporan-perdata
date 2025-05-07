@@ -351,7 +351,7 @@ const MauEs = () =>{
                 {
                     unsur: 'kel8',
                     judul: '8. Dokumen Elektronik Berita Acara Sidang',
-                    detail: 'Ketersediaan Dokumen Berita Acara Sidang',
+                    detail: 'Ketersediaan Dokumen Berita Acara Sidang (Query masih tidak pasti)',
                 },
                 {
                     unsur: 'kel9',
@@ -361,7 +361,7 @@ const MauEs = () =>{
                 {
                     unsur: 'kel10',
                     judul: '10. Dokumen Elektronik Rencana Persidangan (Court Callendar)',
-                    detail: 'Ketersediaan Dokumen Elektronik Rencana Persidangan (Court Callendar)',
+                    detail: 'Ketersediaan Dokumen Elektronik Rencana Persidangan (Court Callendar) (Query masih tidak pasti)',
                 },
                 {
                     unsur: 'kel11',

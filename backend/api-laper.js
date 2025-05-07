@@ -1145,7 +1145,24 @@ const queryMap = {
             )
         ORDER BY
             pphs.tanggal_penetapan ASC`,
-    kel10: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kel10: `
+        SELECT
+            p.nomor_perkara AS 'Nomor Perkara',
+            1 AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN
+            perkara_penetapan_hari_sidang AS pphs ON pphs.perkara_id = p.perkara_id
+        JOIN
+            perkara_jadwal_sidang AS pjs ON pjs.id = pphs.jadwalsidang_id
+        WHERE
+            p.alur_perkara_id NOT IN (114)
+        AND
+            p.tanggal_pendaftaran BETWEEN ? AND ?
+        GROUP BY
+            p.perkara_id
+        ORDER BY
+            p.tanggal_pendaftaran DESC`,
     kel11: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kes1: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kes2: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
