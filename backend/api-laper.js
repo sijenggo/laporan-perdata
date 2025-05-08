@@ -913,32 +913,20 @@ const queryMap = {
             p.nomor_perkara as 'Nomor Perkara',
             pjs.tanggal_sidang as 'Tgl Sidang',
             pjs.agenda as 'Agenda',
-            LEFT(pp.diinput_tanggal, 10) as 'Tgl Input Data Saksi',
             pppn.panitera_nama AS PP,
-            IF( 
-                EXISTS (
-                    SELECT 1 FROM pihak AS pp2 WHERE pp2.id = pp.pihak_id
-                ), 'Ada data saksi', 'Tidak ada data saksi'
-            ) AS 'Data Saksi',
             1 AS kesesuaian
         FROM 
-            perkara_pihak5 AS pp
+            v_jadwal_sidang AS pjs
         JOIN 
-            perkara_panitera_pn AS pppn ON pppn.perkara_id = pp.perkara_id AND pppn.aktif = 'Y' 
+            perkara AS p ON p.perkara_id = pjs.perkara_id
         JOIN 
-            perkara_jadwal_sidang AS pjs ON pp.perkara_id = pjs.perkara_id
-        JOIN 
-            perkara AS p ON pp.perkara_id = p.perkara_id
-        JOIN 
-            perkara_penetapan as ppn ON ppn.perkara_id = pp.perkara_id
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
         WHERE 
             pjs.tanggal_sidang BETWEEN ? AND ?
         AND 
             pjs.agenda LIKE '%saksi%'
-        GROUP BY 
-            p.nomor_perkara
         ORDER BY 
-            pjs.tanggal_sidang ASC`,
+            pjs.tanggal_sidang DESC`,
     kel3: `
          SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1163,7 +1151,33 @@ const queryMap = {
             p.perkara_id
         ORDER BY
             p.tanggal_pendaftaran DESC`,
-    kel11: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
+    kel11: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.jenis_perkara_nama AS 'Jenis Perkara',
+            ptus.tanggal_putusan AS 'Tgl Putusan',
+            CASE(p.pihak_dipublikasikan)
+                WHEN 'T' THEN 'Tidak dipublikasikan'
+                ELSE 'Dipublikasikan'
+            END AS 'Publikasi Pihak',
+            IF(
+                ptus.amar_putusan_anonimisasi_dok IS NULL
+                OR
+                ptus.amar_putusan_anonimisasi_dok = '',
+                'Tidak ada dokumen putusan anonimisasi', 
+                'Ada dokumen putusan anonimisasi'
+            ) AS 'Dokumen Putusan Anonimisasi',
+            1 AS kesesuaian
+        FROM 
+            perkara as p
+        JOIN
+            perkara_putusan as ptus ON ptus.perkara_id = p.perkara_id
+        WHERE
+            ptus.tanggal_putusan BETWEEN ? AND ?
+            AND ptus.tanggal_putusan <= CURDATE()
+            AND (p.jenis_perkara_id IN (64, 25, 200, 293, 137, 224, 242, 88, 98, 63, 65, 130, 248, 346, 347, 365) OR p.alur_perkara_id = 118)
+        ORDER BY
+            ptus.tanggal_putusan ASC`,
     kes1: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kes2: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
     kes3: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,

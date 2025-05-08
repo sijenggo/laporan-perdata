@@ -351,7 +351,7 @@ const MauEs = () =>{
                 {
                     unsur: 'kel8',
                     judul: '8. Dokumen Elektronik Berita Acara Sidang',
-                    detail: 'Ketersediaan Dokumen Berita Acara Sidang (Query masih tidak pasti)',
+                    detail: 'Ketersediaan Dokumen Berita Acara Sidang',
                 },
                 {
                     unsur: 'kel9',
