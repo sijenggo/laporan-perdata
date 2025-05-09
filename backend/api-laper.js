@@ -166,7 +166,7 @@ const queryMap = {
         WHERE 
             pm.keputusan_mediasi BETWEEN ? AND ?
         ORDER BY 
-            pm.keputusan_mediasi ASC`,
+            pm.keputusan_mediasi DESC`,
     kep1: `
         SELECT 
             nomor_perkara AS 'Nomor Perkara', 
@@ -958,7 +958,7 @@ const queryMap = {
         GROUP BY 
             p.nomor_perkara
         ORDER BY 
-            pjs.tanggal_sidang ASC`,
+            pjs.tanggal_sidang DESC`,
     kel4: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1003,7 +1003,7 @@ const queryMap = {
         GROUP BY 
             p.nomor_perkara
         ORDER BY 
-            pjs.tanggal_sidang ASC`,
+            pjs.tanggal_sidang DESC`,
     kel5: `
          SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1030,7 +1030,7 @@ const queryMap = {
         WHERE 
             pm.keputusan_mediasi BETWEEN ? AND ?
         ORDER BY 
-            pm.keputusan_mediasi ASC`,
+            pm.keputusan_mediasi DESC`,
     kel6: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1055,7 +1055,7 @@ const queryMap = {
         WHERE 
             pd.tgl_penetapan_musyawarah BETWEEN ? AND ?            
         ORDER BY 
-            pd.tgl_penetapan_musyawarah ASC`,
+            pd.tgl_penetapan_musyawarah DESC`,
     kel7: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1073,7 +1073,7 @@ const queryMap = {
         AND
             p.alur_perkara_id IN (8, 17)
         ORDER BY 
-            p.tanggal_pendaftaran ASC`,
+            p.tanggal_pendaftaran DESC`,
     kel8: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1100,7 +1100,7 @@ const queryMap = {
         AND 
             p.alur_perkara_id NOT IN (114)
         ORDER BY 
-            pjs.tanggal_sidang ASC;`,
+            pjs.tanggal_sidang DESC;`,
     kel9: `
         SELECT 
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1132,7 +1132,7 @@ const queryMap = {
                 vp.status_perkara NOT LIKE '%saksi%'
             )
         ORDER BY
-            pphs.tanggal_penetapan ASC`,
+            pphs.tanggal_penetapan DESC`,
     kel10: `
         SELECT
             p.nomor_perkara AS 'Nomor Perkara',
@@ -1167,24 +1167,278 @@ const queryMap = {
                 'Tidak ada dokumen putusan anonimisasi', 
                 'Ada dokumen putusan anonimisasi'
             ) AS 'Dokumen Putusan Anonimisasi',
-            1 AS kesesuaian
+            IF(
+                ptus.amar_putusan_anonimisasi_dok IS NULL
+                OR
+                ptus.amar_putusan_anonimisasi_dok = '',
+                1, 0
+            ) AS kesesuaian
         FROM 
             perkara as p
         JOIN
             perkara_putusan as ptus ON ptus.perkara_id = p.perkara_id
         WHERE
             ptus.tanggal_putusan BETWEEN ? AND ?
-            AND ptus.tanggal_putusan <= CURDATE()
-            AND (p.jenis_perkara_id IN (64, 25, 200, 293, 137, 224, 242, 88, 98, 63, 65, 130, 248, 346, 347, 365) OR p.alur_perkara_id = 118)
+        AND
+            ptus.tanggal_putusan <= CURDATE()
+        AND 
+            (
+                p.jenis_perkara_id IN (64, 25, 200, 293, 137, 224, 242, 88, 98, 63, 65, 130, 248, 346, 347, 365) 
+                OR 
+                p.alur_perkara_id = 118
+            )
         ORDER BY
-            ptus.tanggal_putusan ASC`,
-    kes1: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kes2: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kes3: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kes4: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kes5: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kes6: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
-    kes10: `SELECT perkara.nomor_perkara FROM perkara WHERE perkara.tanggal_pendaftaran BETWEEN ? AND ?`,
+            ptus.tanggal_putusan DESC`,
+    kes1: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pjs.tanggal_sidang AS 'Tgl Sidang Terakhir',
+            pjs.agenda AS 'Agenda',
+            pppn.panitera_nama AS PP,
+            IF( 
+                p.tahapan_terakhir_id = 15
+                AND
+                (
+                    pjs.agenda NOT REGEXP '[[:<:]]putusan/penetapan[[:>:]]'
+                    AND
+                    pjs.agenda NOT REGEXP '[[:<:]]putusan[[:>:]]'
+                    AND 
+                    pjs.agenda NOT REGEXP '[[:<:]]penetapan[[:>:]]'
+                ), 1, 0 
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
+        JOIN 
+            perkara_jadwal_sidang AS pjs ON pjs.perkara_id = p.perkara_id
+        WHERE 
+            pjs.tanggal_sidang = (
+                                    SELECT 
+                                        MAX(pjs_sub.tanggal_sidang)
+                                    FROM 
+                                        perkara_jadwal_sidang AS pjs_sub
+                                    WHERE 
+                                        pjs_sub.perkara_id = p.perkara_id
+                                )
+            AND 
+                pjs.tanggal_sidang BETWEEN ? AND ?
+            AND 
+                pjs.tanggal_sidang <= CURDATE()
+            AND 
+                p.alur_perkara_id NOT IN (114)
+        ORDER BY 
+            pjs.tanggal_sidang DESC`,
+    kes2: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            pjs.tanggal_sidang AS 'Tgl Sidang Terakhir',
+            pjs.agenda AS 'Agenda',
+            ptus.tanggal_putusan AS 'Tgl Putusan',
+            pppn.panitera_nama AS PP,
+            IF(
+                p.tahapan_terakhir_id = 15
+                AND
+                pjs.tanggal_sidang != ptus.tanggal_putusan
+                , 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            perkara_panitera_pn AS pppn ON pppn.perkara_id = p.perkara_id AND pppn.aktif = 'Y'
+        JOIN 
+            perkara_putusan AS ptus ON ptus.perkara_id = p.perkara_id
+        JOIN 
+            perkara_jadwal_sidang AS pjs ON pjs.perkara_id = p.perkara_id
+        WHERE 
+            pjs.tanggal_sidang = (
+                                    SELECT 
+                                        MAX(pjs_sub.tanggal_sidang)
+                                    FROM 
+                                        perkara_jadwal_sidang AS pjs_sub
+                                    WHERE 
+                                        pjs_sub.perkara_id = p.perkara_id
+                                )
+            AND 
+                (
+                    pjs.tanggal_sidang BETWEEN ? AND ?
+                    OR
+                    ptus.tanggal_putusan BETWEEN ? AND ?
+                )
+            AND 
+                (
+                    pjs.tanggal_sidang <= CURDATE()
+                    OR
+                    ptus.tanggal_putusan <= CURDATE()
+                )
+            AND 
+                p.alur_perkara_id NOT IN (114)
+        ORDER BY 
+            ptus.tanggal_putusan DESC`,
+    kes3: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            jp.nama AS 'Jenis Perkara',
+            jp.nama_lengkap AS 'Keterangan',
+            CASE(p.pihak_dipublikasikan)
+                WHEN 'T' THEN 'Tidak dipublikasikan'
+                ELSE 'Dipublikasikan'
+            END AS 'Publikasi Pihak',
+            IF(
+                p.pihak_dipublikasikan = 'Y'
+                OR
+                p.pihak_dipublikasikan IS NULL
+                OR
+                p.pihak_dipublikasikan = ''
+                , 1, 0
+            ) AS kesesuaian
+        FROM
+            perkara AS p
+        JOIN 
+            jenis_perkara AS jp ON p.jenis_perkara_id = jp.id
+        WHERE
+            p.tanggal_pendaftaran BETWEEN ? AND ?
+            AND 
+            (
+                p.jenis_perkara_id IN (92, 64, 25, 200, 293, 137, 224, 242, 88, 98, 63, 65, 130, 248, 346, 347, 365)
+                OR
+                p.alur_perkara_id = 118
+            )
+        ORDER BY
+            p.tanggal_pendaftaran DESC`,
+    kes4: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            p.tahapan_terakhir_text AS 'Tahapan Perkara',
+            ptus.tanggal_putusan AS 'Tgl Putusan',
+            CASE(ptus.tanggal_bht)
+                WHEN NULL THEN 'Tidak ada tanggal BHT'
+                ELSE ptus.tanggal_bht
+            END AS 'Tgl BHT',
+            IF(
+                p.tahapan_terakhir_id = 15
+                AND 
+                ptus.tanggal_bht IS NULL
+                OR
+                ptus.tanggal_bht = ''
+                , 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            perkara_putusan AS ptus ON ptus.perkara_id = p.perkara_id
+        WHERE 
+            ptus.tanggal_putusan BETWEEN ? AND ?
+            AND 
+            p.alur_perkara_id NOT IN(114)
+        ORDER BY 
+            ptus.tanggal_putusan DESC`,
+    kes5: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            STR_TO_DATE(pntd.sampai, '%Y-%m-%d') AS 'Tgl Batas Akhir Penahanan',
+            STR_TO_DATE(ptus.tanggal_putusan, '%Y-%m-%d') AS 'Tgl Putusan',
+            CONCAT(
+                DATEDIFF(
+                    STR_TO_DATE(pntd.sampai, '%Y-%m-%d'), 
+                    STR_TO_DATE(ptus.tanggal_putusan, '%Y-%m-%d')
+                ), ' Hari'
+            ) AS 'Jangka Waktu',
+            IF(
+                p.tahapan_terakhir_id = 15
+                AND
+                DATEDIFF(
+                    STR_TO_DATE(pntd.sampai, '%Y-%m-%d'), 
+                    STR_TO_DATE(ptus.tanggal_putusan, '%Y-%m-%d')
+                ) < 1
+                , 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            penahanan_terdakwa AS pntd 
+                ON pntd.perkara_id = p.perkara_id 
+                AND pntd.tanggal_surat = (
+                                            SELECT 
+                                                MAX(STR_TO_DATE(tanggal_surat, '%Y-%m-%d')) 
+                                            FROM 
+                                                penahanan_terdakwa 
+                                            WHERE 
+                                                perkara_id = p.perkara_id
+                                        )
+        JOIN 
+            perkara_putusan AS ptus ON ptus.perkara_id = p.perkara_id
+        WHERE 
+            ptus.tanggal_putusan BETWEEN ? AND ?
+            AND 
+            p.alur_perkara_id NOT IN (114) AND p.alur_perkara_id > 100
+        GROUP BY
+            p.perkara_id
+        ORDER BY
+            ptus.tanggal_putusan DESC`,
+    kes6: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            subquery.pemasukan AS 'Biaya Masuk',
+            subquery.pengeluaran AS 'Biaya Keluar',
+            (subquery.pemasukan - subquery.pengeluaran) AS 'Sisa Biaya',
+            subquery.transaksi_terakhir AS 'Tgl Transaksi Terakhir',
+            IF(
+                p.tahapan_terakhir_id = 15
+                AND
+                (subquery.pemasukan - subquery.pengeluaran) > 0
+                , 1, 0
+            ) AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            (
+                SELECT
+                    id,
+                    perkara_id,
+                    MAX(tanggal_transaksi) AS transaksi_terakhir,
+                    SUM(CASE WHEN jenis_transaksi = 1 THEN jumlah ELSE 0 END) AS pemasukan,
+                    SUM(CASE WHEN jenis_transaksi = -1 THEN jumlah ELSE 0 END) AS pengeluaran
+                FROM 
+                    perkara_biaya
+                WHERE 
+                    tahapan_id = 10
+                GROUP BY 
+                    perkara_id
+            ) AS subquery ON subquery.perkara_id = p.perkara_id
+        JOIN
+            perkara_putusan AS ptus ON ptus.perkara_id = p.perkara_id
+        WHERE 
+            ptus.tanggal_putusan BETWEEN ? AND ?
+            AND 
+            p.alur_perkara_id NOT IN (114) AND p.alur_perkara_id < 100
+        ORDER BY
+            subquery.transaksi_terakhir DESC`,
+    kes10: `
+        SELECT 
+            p.nomor_perkara AS 'Nomor Perkara',
+            ptus.tanggal_minutasi AS 'Tgl Minutasi',
+            asp.tanggal_masuk_arsip AS 'Tgl Arsip',
+            asp.diinput_tanggal AS 'Tgl Input',
+            CONCAT(
+                DATEDIFF(
+                    asp.tanggal_masuk_arsip,
+                    ptus.tanggal_minutasi
+                )
+            , ' Hari') AS 'Jangka Waktu',
+            1 AS kesesuaian
+        FROM 
+            perkara AS p
+        JOIN 
+            perkara_putusan AS ptus ON ptus.perkara_id = p.perkara_id
+        JOIN
+            arsip AS asp ON asp.perkara_id = p.perkara_id
+        WHERE 
+            ptus.tanggal_putusan BETWEEN ? AND ?
+            AND 
+            p.alur_perkara_id NOT IN (114)
+        ORDER BY
+            ptus.tanggal_putusan DESC`,
 };
   
 app.get("/api/data_eis", (req, res) => {
@@ -1201,7 +1455,7 @@ app.get("/api/data_eis", (req, res) => {
   
     // ✅ Buat list unsur yang TIDAK butuh tanggal
     const noDateParams = ['kin2', 'kin3'];
-    const twoDateParams = ['kel9'];
+    const twoDateParams = ['kel9', 'kes2'];
     const fourDateParams = ['kep23'];
   
     let params;

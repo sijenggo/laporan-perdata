@@ -296,8 +296,8 @@ const MauEs = () =>{
                 },
                 {
                     unsur: 'kep23',
-                    judul: '23. Kepatuhan Penundaan Jadwal Sidang',
-                    detail: 'Kepatuhan input penundaan jadwal sidang dalam waktu 1x24 jam (Query masih tidak pasti)',
+                    judul: '23. Kepatuhan Penundaan Jadwal Sidang (Query masih belum pasti)',
+                    detail: 'Kepatuhan input penundaan jadwal sidang dalam waktu 1x24 jam (Query masih belum pasti)',
                 },
                 {
                     unsur: 'kep24',
@@ -306,8 +306,8 @@ const MauEs = () =>{
                 },
                 {
                     unsur: 'kep25',
-                    judul: '25. Unggah Putusan Akhir',
-                    detail: 'Kepatuhan unggah dokumen Putusan Akhir maksimal 1x24 jam sejak tanggal putus (Query masih tidak pasti)',
+                    judul: '25. Unggah Putusan Akhir (Query masih belum pasti)',
+                    detail: 'Kepatuhan unggah dokumen Putusan Akhir maksimal 1x24 jam sejak tanggal putus (Query masih belum pasti)',
                 },
                 ]
             },
@@ -320,13 +320,13 @@ const MauEs = () =>{
                 },
                 {
                     unsur: 'kel2',
-                    judul: '2. Pencatatan Saksi',
-                    detail: 'Kelengkapan pencatatan Data Saksi (Query masih tidak pasti)',
+                    judul: '2. Pencatatan Saksi (Query masih belum pasti)',
+                    detail: 'Kelengkapan pencatatan Data Saksi (Query masih belum pasti)',
                 },
                 {
                     unsur: 'kel3',
-                    judul: '3. E-Document Tuntutan',
-                    detail: 'Kelengkapan Dokumen Elektronik Tuntutan (Query masih tidak pasti)',
+                    judul: '3. E-Document Tuntutan (Query masih belum pasti)',
+                    detail: 'Kelengkapan Dokumen Elektronik Tuntutan (Query masih belum pasti)',
                 },
                 {
                     unsur: 'kel4',
@@ -360,8 +360,8 @@ const MauEs = () =>{
                 },
                 {
                     unsur: 'kel10',
-                    judul: '10. Dokumen Elektronik Rencana Persidangan (Court Callendar)',
-                    detail: 'Ketersediaan Dokumen Elektronik Rencana Persidangan (Court Callendar) (Query masih tidak pasti)',
+                    judul: '10. Dokumen Elektronik Rencana Persidangan (Court Callendar) (Query masih belum pasti)',
+                    detail: 'Ketersediaan Dokumen Elektronik Rencana Persidangan (Court Callendar) (Query masih belum pasti)',
                 },
                 {
                     unsur: 'kel11',
@@ -404,8 +404,8 @@ const MauEs = () =>{
                 },
                 {
                     unsur: 'kes10',
-                    judul: '10. Pengarsipan Perkara',
-                    detail: 'Kesesuaian Waktu Pelaksanaan Pengarsipan Perkara',
+                    judul: '10. Pengarsipan Perkara (Query masih belum pasti)',
+                    detail: 'Kesesuaian Waktu Pelaksanaan Pengarsipan Perkara (Query masih belum pasti)',
                 }
             ]
         },
