@@ -11,12 +11,14 @@ const Dashboard = React.lazy(() => import('./pages/Home'));
 const Page404 = React.lazy(() => import('./pages/Page404'))
 const LaporanBulananPerdata = React.lazy(() => import(`./pages/LaporanBulananPerdata`))
 const MauEs = React.lazy(() => import(`./pages/MauEs`))
+const Monev = React.lazy(() => import(`./pages/Monev`))
 
 const routes = [
   { path: '/', exact: true, name: 'Home', element: Dashboard },
   { path: '/dashboard', name: 'Dashboard', element: Dashboard },
   { path: '/lapbulperdata', name: 'Laporan Bulanan Perdata', element: LaporanBulananPerdata },
   { path: '/maues', name: 'Mau Es', element: MauEs },
+  { path: '/monev', name: 'Monev Generator', element: Monev },
   { path: '/*', name: '404', element: Page404 },
 ]
 
@@ -25,7 +27,8 @@ export {
   Dashboard,
   Page404,
   LaporanBulananPerdata,
-  MauEs
+  MauEs,
+  Monev
 }
 
 export const _nav = [
@@ -55,6 +58,13 @@ export const _nav = [
     roles: [],
     name: 'Laporan Bulanan Perdata',
     to: '/lapbulperdata',
+    icon: <CIcon icon={cilFolderOpen} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    roles: [],
+    name: 'Monev Generator',
+    to: '/monev',
     icon: <CIcon icon={cilFolderOpen} customClassName="nav-icon" />,
   },
   /*{
