@@ -189,3 +189,15 @@ body {
 .modal-90w{
   max-width: 90vw !important;
 }
+
+.dropzone {
+  border: 2px dashed #aaa;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.dropzone:hover {
+  border-color: #007bff;
+}

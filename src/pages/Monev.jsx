@@ -3,6 +3,7 @@ import DatePicker from 'react-datepicker'
 import { subMonths } from "date-fns";
 import { id } from 'date-fns/locale';
 import { formattedBulanSaja, formattedDate, formattedTgl, formattedTahunSaja, alur_permohonan, alur_gugatan, alur_gugatan_sederhana } from '../components/services';
+import { useDropzone } from 'react-dropzone';
 
 import {
   CButton,
@@ -45,6 +46,10 @@ const Monev = () =>{
         setStartDate(newDate);
         setDate1(formattedDate(newDate));
     };
+
+    const { getRootProps, getInputProps, acceptedFiles } = useDropzone();
+
+    const [tambahTTD, setTambahTTD] = useState(false);
 
     return(
         <>
@@ -165,6 +170,53 @@ const Monev = () =>{
                                                         className="form-control ms-2 w-80"
                                                         placeholder={`Tempat Rapat Monev`}
                                                     />
+                                            </CRow>
+                                            <CRow>
+                                                <CFormLabel className="col-form-label text-truncate small fs-6">Ttd</CFormLabel>
+                                                {!tambahTTD ? (
+                                                    <>
+                                                        ini false
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CTable className='ms-2'>
+                                                            <CTableHead>
+                                                                <CTableRow>
+                                                                    <td>Nama Pejabat</td>
+                                                                    <td>Jabatan</td>
+                                                                    <td>File TTD</td>
+                                                                </CTableRow>
+                                                            </CTableHead>
+                                                            <CTableBody>
+                                                                <CTableRow>
+                                                                    <td>
+                                                                        <CFormInput
+                                                                            className="form-control"
+                                                                            placeholder={`Nama Pejabat yang TTD`}
+                                                                        />
+                                                                    </td>
+                                                                    <td>
+                                                                        <CFormInput
+                                                                            className="form-control"
+                                                                            placeholder={`Jabatan Pejabat yang TTD`}
+                                                                        /></td>
+                                                                    <td className='w-30'>
+                                                                        <div {...getRootProps()} className='dropzone'>
+                                                                            <input {...getInputProps()} />
+                                                                            <p style={{ fontSize: 'smaller'}}>Drag & drop file di sini, atau klik untuk pilih file. <b>Hanya menerima PNG yg bg transparent</b></p>
+                                                                            <ul>
+                                                                                {acceptedFiles.map(file => (
+                                                                                    <li key={file.path}>{file.path} - {file.size} bytes</li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    </td>
+                                                                </CTableRow>
+                                                            </CTableBody>
+                                                        </CTable>
+                                                    </>
+                                                )}
+                                                    
                                             </CRow>
                                         </CForm>
                                     </div>

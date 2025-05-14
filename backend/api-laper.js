@@ -2,7 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from "express";
-import { db } from "./db.js"
+import { db as db } from "./db.js" 
+import { db as db2 } from "./db2.js"
 import path from "path";
 import * as fs from 'fs'; // untuk stream, readFileSync, dll
 import { fileURLToPath } from "url";
@@ -1485,8 +1486,25 @@ app.get("/api/data_eis", (req, res) => {
       res.json({ success: true, message: "Query berhasil", data: result });
     });
 });
-  
 
+app.get("api_laper/ambildata", (req, res) => {
+    const { column, from, where } = req.query; // ✅ ambil dari req.query
+    logger.info('Log API Laper ambil data'); // 🔹 Log API ambil data
+
+    const query = `SELECT ${column} FROM ${from} WHERE ${where}`;
+
+    db2.query(query, (err, result) => {
+        if (err) {
+            logger.error("Error saat mengambil data:", err);
+            console.error("Error saat mengambil data:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
+        }
+        logger.info('Data berhasil diambil'); // 🔹 Log jika data berhasil diambil
+        res.json({ success: true, message: "Query berhasil", data: result });
+    });
+
+});
+  
 app.listen(PORT, () => {
     logger.info(`✅ Server listening ON PORT ${PORT}`);
     console.log(`✅ Server listening ON PORT ${PORT}`);
