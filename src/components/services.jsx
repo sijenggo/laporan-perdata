@@ -1,9 +1,22 @@
 import { id } from 'date-fns/locale';
-import { format } from "date-fns";
+import { format, parse } from "date-fns";
 
 export const formattedDate = (date) =>{
     return format(date, 'yyyy-MM-dd');
 };
+
+export const formattedTime = (date) =>{
+	return format(date, 'HH:mm:ss');
+};
+
+export const formattedDateTime = (date) =>{
+    return format(date, 'yyyy-MM-dd HH:mm:ss');
+};
+
+export const formattedTimeMysql = (date) =>{
+	return parse(date, 'HH:mm:ss', new Date());
+};
+
 export const formattedTgl = (date) =>{
     return format(date, 'd MMMM yyyy', {locale: id});
 };
@@ -18,6 +31,14 @@ export const formattedBulanSaja = (date) =>{
 
 export const formattedTahunSaja = (date) =>{
     return format(date, 'yyyy', {locale: id});
+};
+
+export const formattedBulanSajaNumber = (date) =>{
+    return format(date, 'MM');
+};
+
+export const formattedTahunSajaNumber = (date) =>{
+    return format(date, 'yyyy');
 };
 
 export const formattedBiaya = (value) => {

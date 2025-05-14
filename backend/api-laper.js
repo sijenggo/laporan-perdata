@@ -1487,7 +1487,7 @@ app.get("/api/data_eis", (req, res) => {
     });
 });
 
-app.get("api_laper/ambildata", (req, res) => {
+app.get("/api_laper/ambildata", (req, res) => {
     const { column, from, where } = req.query; // ✅ ambil dari req.query
     logger.info('Log API Laper ambil data'); // 🔹 Log API ambil data
 

@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import DatePicker from 'react-datepicker'
 import { subMonths } from "date-fns";
 import { id } from 'date-fns/locale';
-import { formattedBulanSaja, formattedDate, formattedTgl, formattedTahunSaja, alur_permohonan, alur_gugatan, alur_gugatan_sederhana } from '../components/services';
+import { formattedBulanSajaNumber, formattedTahunSajaNumber, formattedBulanSaja, formattedDate, formattedDateTime, formattedTime, formattedTimeMysql, formattedTgl, formattedTahunSaja, alur_permohonan, alur_gugatan, alur_gugatan_sederhana } from '../components/services';
 import { useDropzone } from 'react-dropzone';
+import RSelect from 'react-select';
 
 import {
   CButton,
@@ -30,11 +31,29 @@ import {
 import CIcon from '@coreui/icons-react'
 import {
   cilCloudDownload,
-  cilWarning
+  cilWarning,
+  cilThumbUp
 } from '@coreui/icons'
 import { useQuery } from '@tanstack/react-query';
 
-import axios from '../components/axois'
+import axios from 'axios';
+
+const ambilData = async ({ column, from, where }) => {
+    try {
+        const response = await axios.get('http://localhost:956/api_laper/ambildata', {
+            params: {
+                column,
+                from,
+                where,
+            },
+        });
+        return response.data.data;
+    } catch (error) {
+        console.error("Terjadi kesalahan saat ambilData:", error);
+        return []; // biar gak undefined kalau error
+    }
+};
+  
 
 const Monev = () =>{
     const today = new Date();
@@ -50,6 +69,47 @@ const Monev = () =>{
     const { getRootProps, getInputProps, acceptedFiles } = useDropzone();
 
     const [tambahTTD, setTambahTTD] = useState(false);
+
+    const handleTambahTTD = () => {
+        setTambahTTD(!tambahTTD);
+    };
+
+    const { data: judulMonev = [], isLoading: loadingJudulMonev, error: errorJudulMonev } = useQuery({
+        queryKey: ['judulMonev'],
+        queryFn: () => ambilData({ column: 'id AS value, judul AS label', from: 'tb_judul', where: 1 }),
+    });
+
+    const [idjudulMonev, setIdJudul] = useState(null);
+
+    const handleChangeSelect = (selectedOption) => {
+        setIdJudul(selectedOption);
+        //console.log(selectedOption)
+    };
+
+    const { data: dataMonev = [], isLoading: loadingDataMonev, error: errorDataMonev } = useQuery({
+        queryKey: ['dataMonev', idjudulMonev, date1],
+        queryFn: () =>
+            ambilData({
+                column: '*',
+                from: 'tb_monev',
+                where: `judul = ${idjudulMonev.value} AND DATE_FORMAT(tanggal, '%Y-%m') = '${formattedTahunSajaNumber(date1)}-${formattedBulanSajaNumber(date1)}'`,
+            }),
+        enabled: !!idjudulMonev,
+    });
+
+    const [monevLocal, setMonevLocal] = useState(null);
+
+    useEffect(() => {
+      if (dataMonev.length > 0) {
+        setMonevLocal({ ...dataMonev[0] });
+      }else{
+        setMonevLocal(null);
+      }
+    }, [dataMonev]);
+    
+    useEffect(() =>{
+        console.log(monevLocal)
+    }, [monevLocal]);
 
     return(
         <>
@@ -79,6 +139,20 @@ const Monev = () =>{
 
                     <hr className="mt-0" />
 
+                    {idjudulMonev && dataMonev.length > 0 ? (
+                        <CAlert color="success" className="d-flex align-items-center">
+                            <CIcon icon={cilThumbUp} className="flex-shrink-0 me-2" width={24} height={24} />
+                            <div>Monevnya ada cuyy</div>
+                        </CAlert>
+                    ) : idjudulMonev && dataMonev.length == 0 ? (
+                        <CAlert color="warning" className="d-flex align-items-center">
+                            <CIcon icon={cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
+                            <div>Monevnya belom ada hayoo ..</div>
+                        </CAlert>
+                    ) : !idjudulMonev && dataMonev.length == 0 ? (
+                        <></>
+                    ) : null}
+
                     <CRow className='mb-2'>
                         <CCol>
                             <CRow>
@@ -87,81 +161,52 @@ const Monev = () =>{
                                         <CForm>
                                             <CRow>
                                                 <CFormLabel className="col-form-label text-truncate small fs-6">Judul</CFormLabel>
-                                                    <CFormInput
-                                                        className="form-control ms-2 w-60"
-                                                        placeholder={`Judul Monev`}
+                                                {loadingJudulMonev ? (
+                                                    <div className="pt-3 text-center">
+                                                        <CSpinner color="primary" variant="grow" />
+                                                    </div>
+                                                ) : errorJudulMonev ? (
+                                                    <CAlert color="warning" className="d-flex align-items-center">
+                                                        <CIcon icon={cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
+                                                        <div>Error dalam pengambilan data</div>
+                                                    </CAlert>
+                                                ) : (
+                                                    <RSelect
+                                                        options={judulMonev}
+                                                        onChange={handleChangeSelect}
+                                                        isClearable={true}
+                                                        placeholder="Pilih atau ketik monev yg ingin kau generate..."
                                                     />
+                                                )}
                                             </CRow>
                                             <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Bulan</CFormLabel>
-                                                    <DatePicker 
-                                                        selected={startDate}
-                                                        dateFormat='MMMM' 
-                                                        locale={id} 
-                                                        onChange={handleChangeDate}
-                                                        className='form-control text-center w-30 ms-2'
-                                                        placeholderText='Pilih Bulan Monev'
-                                                        showMonthYearPicker
-                                                    />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Tahun</CFormLabel>
-                                                    <DatePicker 
-                                                        selected={startDate}
-                                                        dateFormat='yyyy' 
-                                                        locale={id} 
-                                                        onChange={handleChangeDate}
-                                                        className='form-control text-center w-30 ms-2'
-                                                        placeholderText='Pilih Tahun Monev'
-                                                        showMonthYearPicker
-                                                    />
+                                                <CFormLabel className="col-form-label text-truncate small fs-6">Tanggal</CFormLabel>
+                                                <DatePicker
+                                                    selected={monevLocal ? new Date(monevLocal.tanggal) : ''}
+                                                    onChange={(date) => setMonevLocal({ ...monevLocal, tanggal: formattedDateTime(date) })}
+                                                    showTimeSelect
+                                                    dateFormat="EEEE, d MMMM yyyy HH:mm"
+                                                    className='form-control w-30 ms-2'
+                                                    locale={id}
+                                                />
                                             </CRow>
                                             <CRow>
                                                 <CFormLabel className="col-form-label text-truncate small fs-6">Tujuan Surat</CFormLabel>
-                                                    <CFormTextarea
-                                                        className="form-control ms-2 w-50"
-                                                        placeholder={`Tujuan Surat Monev Kemana`}
-                                                        rows={4}
-                                                    />
+                                                <CFormTextarea
+                                                    className="form-control ms-2 w-50"
+                                                    placeholder={`Tujuan Surat Monev Kemana`}
+                                                    rows={4}
+                                                    defaultValue={monevLocal ? monevLocal.kepada : ''}
+                                                    onChange={(e => setMonevLocal({ ...monevLocal, kepada: e.target.value }))}
+                                                />
                                             </CRow>
                                             <CRow>
                                                 <CFormLabel className="col-form-label text-truncate small fs-6">Unit</CFormLabel>
                                                     <CFormInput
                                                         className="form-control ms-2 w-80"
                                                         placeholder={`Unit Monev`}
-                                                    />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Hari</CFormLabel>
-                                                    <CFormSelect className="form-control ms-2 w-20">
-                                                        <option value="0">Pilih Hari</option>
-                                                    </CFormSelect>
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Tanggal</CFormLabel>
-                                                    <DatePicker 
-                                                        selected={startDate}
-                                                        dateFormat='dd MMMM yyyy' 
-                                                        locale={id} 
-                                                        onChange={handleChangeDate}
-                                                        className='form-control text-center w-30 ms-2'
-                                                        placeholderText='Pilih Tanggal Rapat Monev'
-                                                    />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Pukul</CFormLabel>
-                                                    <DatePicker 
-                                                        selected={startDate}
-                                                        dateFormat="hh:mm aa"
-                                                        locale={id} 
-                                                        onChange={handleChangeDate}
-                                                        className='form-control text-center w-30 ms-2'
-                                                        placeholderText='Pilih Jam Rapat Monev'
-                                                        timeIntervals={30}
-                                                        timeCaption="Time"
-                                                        showTimeSelect
-                                                        showTimeSelectOnly
-                                                        showTimeCaption={false}
+                                                        defaultValue={monevLocal ? monevLocal.unit : ''}
+                                                        onChange={(e => setMonevLocal({ ...monevLocal, unit: e.target.value }))}
                                                     />
                                             </CRow>
                                             <CRow>
@@ -169,13 +214,20 @@ const Monev = () =>{
                                                     <CFormInput
                                                         className="form-control ms-2 w-80"
                                                         placeholder={`Tempat Rapat Monev`}
+                                                        defaultValue={monevLocal ? monevLocal.tempat : ''}
+                                                        onChange={(e => setMonevLocal({ ...monevLocal, tempat: e.target.value }))}
                                                     />
                                             </CRow>
                                             <CRow>
                                                 <CFormLabel className="col-form-label text-truncate small fs-6">Ttd</CFormLabel>
-                                                {!tambahTTD ? (
+                                                {!tambahTTD && !monevLocal ? (
                                                     <>
-                                                        ini false
+                                                        <CButton 
+                                                            color='info ms-2 text-white fw-bold w-20'
+                                                            onClick={handleTambahTTD}
+                                                        >
+                                                            Tambah TTD
+                                                        </CButton>
                                                     </>
                                                 ) : (
                                                     <>
@@ -192,31 +244,63 @@ const Monev = () =>{
                                                                     <td>
                                                                         <CFormInput
                                                                             className="form-control"
-                                                                            placeholder={`Nama Pejabat yang TTD`}
+                                                                            placeholder="Nama Pejabat yang TTD"
+                                                                            defaultValue={
+                                                                                (() => {
+                                                                                    const ttdObj = typeof monevLocal?.ttd === 'string' ? JSON.parse(monevLocal.ttd) : monevLocal?.ttd;
+                                                                                    return ttdObj?.nama || '';
+                                                                                })()
+                                                                            }
+                                                                            onChange={(e) => setMonevLocal({ ...monevLocal, ttd: JSON.stringify({ ...JSON.parse(monevLocal.ttd), nama: e.target.value }) })}
                                                                         />
                                                                     </td>
                                                                     <td>
                                                                         <CFormInput
                                                                             className="form-control"
                                                                             placeholder={`Jabatan Pejabat yang TTD`}
-                                                                        /></td>
+                                                                            defaultValue={
+                                                                                (() => {
+                                                                                    const ttdObj = typeof monevLocal?.ttd === 'string' ? JSON.parse(monevLocal.ttd) : monevLocal?.ttd;
+                                                                                    return ttdObj?.jabatan || '';
+                                                                                })()
+                                                                            }
+                                                                            onChange={(e) => setMonevLocal({ ...monevLocal, ttd: JSON.stringify({ ...JSON.parse(monevLocal.ttd), jabatan: e.target.value }) })}
+                                                                        />
+                                                                    </td>
                                                                     <td className='w-30'>
-                                                                        <div {...getRootProps()} className='dropzone'>
-                                                                            <input {...getInputProps()} />
-                                                                            <p style={{ fontSize: 'smaller'}}>Drag & drop file di sini, atau klik untuk pilih file. <b>Hanya menerima PNG yg bg transparent</b></p>
-                                                                            <ul>
-                                                                                {acceptedFiles.map(file => (
-                                                                                    <li key={file.path}>{file.path} - {file.size} bytes</li>
-                                                                                ))}
-                                                                            </ul>
-                                                                        </div>
+                                                                        {(() => {
+                                                                            const ttdObj = typeof monevLocal?.ttd === 'string' ? JSON.parse(monevLocal.ttd) : monevLocal?.ttd;
+
+                                                                            if (monevLocal && ttdObj?.ttd) {
+                                                                                return (
+                                                                                    <img
+                                                                                        src={`${import.meta.env.BASE_URL}/TTD/${ttdObj.ttd}`}
+                                                                                        alt="Preview"
+                                                                                        style={{ width: '50px', height: '50px' }}
+                                                                                    />
+                                                                                );
+                                                                            } else {
+                                                                                return (
+                                                                                    <div {...getRootProps()} className='dropzone'>
+                                                                                    <input {...getInputProps()} />
+                                                                                    <p style={{ fontSize: 'smaller' }}>
+                                                                                        Drag & drop file di sini, atau klik untuk pilih file. <b>Hanya menerima PNG yang background-nya transparan</b>
+                                                                                    </p>
+                                                                                    <ul>
+                                                                                        {acceptedFiles.map(file => (
+                                                                                        <li key={file.path}>{file.path} - {file.size} bytes</li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                    </div>
+                                                                                );
+                                                                            }
+                                                                        })()}
                                                                     </td>
                                                                 </CTableRow>
                                                             </CTableBody>
                                                         </CTable>
                                                     </>
                                                 )}
-                                                    
                                             </CRow>
                                         </CForm>
                                     </div>
