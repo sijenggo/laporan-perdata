@@ -36,7 +36,7 @@ import {
   cilWarning,
   cilThumbUp
 } from '@coreui/icons'
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 
 import axios from 'axios';
 import Swal from 'sweetalert2';
@@ -95,13 +95,13 @@ const Monev = () =>{
         queryKey: ['dataMonev', idjudulMonev, date1],
         queryFn: () =>
             ambilData({
-                column: '*',
+                column: 'tb_monev.id, tb_monev.judul, tb_monev.bulan, tb_monev.tahun, tb_monev.kepada, tb_monev.unit, tb_monev.hari, tb_monev.tanggal, tb_monev.pukul, tb_monev.tempat, tb_monev.absen, tb_monev.tujuan_monev, tb_monev.dasar, tb_monev.uji_petik, tb_monev.kendala, tb_monev.tujuan_lanjut, tb_monev.temuan, tb_monev.hasil',
                 from: 'tb_monev',
                 where: `judul = ${idjudulMonev.value} AND DATE_FORMAT(tanggal, '%Y-%m') = '${formattedTahunSajaNumber(date1)}-${formattedBulanSajaNumber(date1)}'`,
             }),
-        enabled: !!idjudulMonev,
+        enabled: !!idjudulMonev && !!date1,
     });
-
+    
     const [monevLocal, setMonevLocal] = useState(null);
 
     const handleChangeMonevLocal = ({col, value}) =>{
@@ -116,14 +116,6 @@ const Monev = () =>{
             });
         }
     };
-
-    useEffect(() => {
-      if (dataMonev.length > 0) {
-        setMonevLocal({ ...dataMonev[0] });
-      }else{
-        setMonevLocal(null);
-      }
-    }, [dataMonev]);
 
     const columnHelper = createColumnHelper();
     
@@ -157,10 +149,6 @@ const Monev = () =>{
         console.log(imageList, addUpdateIndex);
         setImages(imageList);
     }
-      
-    useEffect(() =>{
-        console.log(monevLocal)
-    }, [monevLocal]);
 
     return(
         <>
@@ -230,257 +218,7 @@ const Monev = () =>{
                                                     />
                                                 )}
                                             </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Tanggal</CFormLabel>
-                                                <DatePicker
-                                                    selected={monevLocal && monevLocal.tanggal ? new Date(monevLocal.tanggal) : null}
-                                                    onChange={(date) => handleChangeMonevLocal({col: 'tanggal', value: date})}
-                                                    showTimeSelect
-                                                    dateFormat="EEEE, d MMMM yyyy HH:mm"
-                                                    className='form-control w-30 ms-2'
-                                                    locale={id}
-                                                />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Tujuan Surat</CFormLabel>
-                                                <CFormTextarea
-                                                    className="form-control ms-2 w-50"
-                                                    placeholder={`Tujuan Surat Monev Kemana`}
-                                                    rows={4}
-                                                    defaultValue={monevLocal ? monevLocal.kepada : ''}
-                                                    onChange={(e => handleChangeMonevLocal({col: 'kepada', value: e.target.value}))}
-                                                />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Unit</CFormLabel>
-                                                    <CFormInput
-                                                        className="form-control ms-2 w-80"
-                                                        placeholder={`Unit Monev`}
-                                                        defaultValue={monevLocal ? monevLocal.unit : ''}
-                                                        onChange={(e => handleChangeMonevLocal({col: 'unit', value: e.target.value}))}
-                                                    />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Tempat</CFormLabel>
-                                                    <CFormInput
-                                                        className="form-control ms-2 w-80"
-                                                        placeholder={`Tempat Rapat Monev`}
-                                                        defaultValue={monevLocal ? monevLocal.tempat : ''}
-                                                        onChange={(e => handleChangeMonevLocal({col: 'tempat', value: e.target.value}))}
-                                                    />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Ttd (masih belum final)</CFormLabel>
-                                                {!tambahTTD && !monevLocal ? (
-                                                    <>
-                                                        <CButton 
-                                                            color='info ms-2 text-white fw-bold w-20'
-                                                            onClick={handleTambahTTD}
-                                                            disabled={idjudulMonev ? false : true}
-                                                        >
-                                                            Tambah TTD
-                                                        </CButton>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <CTable className='ms-2'>
-                                                            <CTableHead>
-                                                                <CTableRow>
-                                                                    <td>Nama Pejabat</td>
-                                                                    <td>Jabatan</td>
-                                                                    <td>File TTD</td>
-                                                                </CTableRow>
-                                                            </CTableHead>
-                                                            <CTableBody>
-                                                                <CTableRow>
-                                                                    <td>
-                                                                        <CFormInput
-                                                                            className="form-control"
-                                                                            placeholder="Nama Pejabat yang TTD"
-                                                                            value={
-                                                                                (() => {
-                                                                                  const ttdObj = typeof monevLocal?.ttd === 'string'
-                                                                                        ? JSON.parse(monevLocal.ttd)
-                                                                                        : monevLocal?.ttd || {};
-                                                                                    return ttdObj?.nama || '';
-                                                                                })()
-                                                                            }
-                                                                              onChange={(e) => {
-                                                                                const ttdObj = typeof monevLocal?.ttd === 'string'
-                                                                                    ? JSON.parse(monevLocal.ttd)
-                                                                                    : monevLocal?.ttd || {};
-                                                                                const updatedTTD = { ...ttdObj, nama: e.target.value };
-                                                                                handleChangeMonevLocal({ col: 'ttd', value: JSON.stringify(updatedTTD) });
-                                                                            }}
-                                                                        />
-                                                                    </td>
-                                                                    <td>
-                                                                        <CFormInput
-                                                                            className="form-control"
-                                                                            placeholder={`Jabatan Pejabat yang TTD`}
-                                                                            value={
-                                                                                (() => {
-                                                                                  const ttdObj = typeof monevLocal?.ttd === 'string'
-                                                                                        ? JSON.parse(monevLocal.ttd)
-                                                                                        : monevLocal?.ttd || {};
-                                                                                    return ttdObj?.jabatan || '';
-                                                                                })()
-                                                                            }
-                                                                              onChange={(e) => {
-                                                                                const ttdObj = typeof monevLocal?.ttd === 'string'
-                                                                                    ? JSON.parse(monevLocal.ttd)
-                                                                                    : monevLocal?.ttd || {};
-                                                                                const updatedTTD = { ...ttdObj, jabatan: e.target.value };
-                                                                                handleChangeMonevLocal({ col: 'ttd', value: JSON.stringify(updatedTTD) });
-                                                                            }}
-                                                                        />
-                                                                    </td>
-                                                                    <td className='w-30'>
-                                                                        {(() => {
-                                                                            const ttdObj = typeof monevLocal?.ttd === 'string' ? JSON.parse(monevLocal.ttd) : monevLocal?.ttd;
-
-                                                                            if (monevLocal && ttdObj?.ttd) {
-                                                                                return (
-                                                                                    <img
-                                                                                        src={previewURL || `${import.meta.env.BASE_URL}/TTD/${ttdObj.ttd}`}
-                                                                                        alt="Preview"
-                                                                                        style={{ width: '50px', height: '50px' }}
-                                                                                    />
-                                                                                );
-                                                                            } else {
-                                                                                return (
-                                                                                    <Dropzone
-                                                                                        accept={{ 'image/png': ['.png'] }}
-                                                                                        maxFiles={1}
-                                                                                        onDrop={(acceptedFiles, fileRejections) => {
-                                                                                            // Cek file yang ditolak
-                                                                                            if (fileRejections.length > 0) {
-                                                                                            fileRejections.forEach(rejection => {
-                                                                                                rejection.errors.forEach(error => {
-                                                                                                Swal.fire({
-                                                                                                    icon: "error",
-                                                                                                    title: "Oops...",
-                                                                                                    text: "Dibilang file cuma PNG!",
-                                                                                                    footer: '<a href="#">Skill issues!</a>'
-                                                                                                });
-                                                                                                });
-                                                                                            });
-                                                                                            return; // Stop di sini kalau file ditolak
-                                                                                            }
-
-                                                                                            // Kalau file valid
-                                                                                            const file = acceptedFiles[0];
-                                                                                            setPreviewURL(URL.createObjectURL(file));
-                                                                                            const ttdObj = typeof monevLocal?.ttd === 'string'
-                                                                                            ? JSON.parse(monevLocal.ttd)
-                                                                                            : monevLocal?.ttd || {};
-                                                                                            const updatedTTD = { ...ttdObj, ttd: file.name };
-                                                                                            handleChangeMonevLocal({ col: 'ttd', value: JSON.stringify(updatedTTD) });
-                                                                                        }}
-                                                                                    >
-                                                                                        {({getRootProps, getInputProps}) => (
-                                                                                            <section className='dropzone'>
-                                                                                                <div {...getRootProps()}>
-                                                                                                    <input {...getInputProps()} />
-                                                                                                    <p className='m-0'>Tarik dan Letakan / Klik untuk pilih TTD mu disini <b>(hanya menerima TTD PNG saja!)</b></p>
-                                                                                                </div>
-                                                                                            </section>
-                                                                                        )}
-                                                                                    </Dropzone>
-                                                                                );
-                                                                            }
-                                                                        })()}
-                                                                    </td>
-                                                                </CTableRow>
-                                                            </CTableBody>
-                                                        </CTable>
-                                                    </>
-                                                )}
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Absen (masih belum final)</CFormLabel>
-                                                <div className='ms-2'>
-                                                <TableDinamis
-                                                    columns={columns}
-                                                    data={monevLocal && monevLocal?.absen ? JSON.parse(monevLocal.absen) : []}
-                                                    onAddrow={() => {
-                                                        const absenList = monevLocal?.absen ? JSON.parse(monevLocal.absen) : [];
-                                                        const nextNo = absenList.length + 1;
-                                                        const newRow = { no: nextNo, nama: '', jabatan: '', ttd: '' };
-                                                        const updatedData = [...absenList, newRow];
-                                                        handleChangeMonevLocal({ col: 'absen', value: JSON.stringify(updatedData) });
-                                                    }}
-                                                    updateData={(newData) => {
-                                                        handleChangeMonevLocal({
-                                                            col: 'absen',
-                                                            value: JSON.stringify(newData)
-                                                        });
-                                                    }}
-                                                />
-                                                </div>
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Dokumentasi (masih belum final)</CFormLabel>
-                                                <ReactImageUploading
-                                                    multiple
-                                                    value={images}
-                                                    maxNumber={maxNumber}
-                                                    maxFileSize={5000000}
-                                                    onChange={imgOnChange}
-                                                    dataURLKey='data_url'
-                                                >
-                                                    {({
-                                                        imageList,
-                                                        onImageUpload,
-                                                        onImageRemoveAll,
-                                                        onImageUpdate,
-                                                        onImageRemove,
-                                                        isDragging,
-                                                        dragProps,
-                                                    }) => ( 
-                                                        <div 
-                                                            className='ms-2 dropzone'
-                                                            onClick={onImageUpload}
-                                                        >
-                                                            <div {...dragProps} className={`${isDragging ? 'dragging' : ''}`}>
-                                                                    <CRow className='flex-wrap justify-content-start'>
-                                                                        {imageList.map((image, index) => (
-                                                                            <CCol key={index}>
-                                                                                <div className="image-item">
-                                                                                    <CImage rounded thumbnail src={image.data_url} alt="" width="100" />
-                                                                                    <div className="image-item__btn-wrapper">
-                                                                                        <CButton color='danger' className='mt-2' onClick={() => onImageRemove(index)}>Hapus</CButton>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </CCol>
-                                                                        ))}
-                                                                    </CRow>
-                                                                <p className='m-0 mt-4'>Tarik dan Letakan / Klik untuk pilih Gambar mu disini <b>(hanya menerima gambar JPG, JPEG, PNG dan MAX 5 Pcs saja!)</b></p>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </ReactImageUploading>
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Tujuan Monev</CFormLabel>
-                                                <CFormTextarea
-                                                    className="form-control ms-2"
-                                                    placeholder={`Tujuan Monev`}
-                                                    rows={6}
-                                                    defaultValue={monevLocal ? monevLocal.tujuan_monev : ''}
-                                                    onChange={(e => handleChangeMonevLocal({col: 'tujuan_monev', value: e.target.value}))}
-                                                />
-                                            </CRow>
-                                            <CRow>
-                                                <CFormLabel className="col-form-label text-truncate small fs-6">Dasar Hukum Monev</CFormLabel>
-                                                <CFormTextarea
-                                                    className="form-control ms-2"
-                                                    placeholder={`Dasar Hukum Monev`}
-                                                    rows={6}
-                                                    defaultValue={monevLocal ? monevLocal.dasar : ''}
-                                                    onChange={(e => handleChangeMonevLocal({col: 'dasar', value: e.target.value}))}
-                                                />
-                                            </CRow>
+                                            
                                         </CForm>
                                     </div>
                                 </CCol>
