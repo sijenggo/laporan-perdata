@@ -39,14 +39,16 @@ import {
 } from '@coreui/icons'
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import axios from 'axios';
+import axios from '../components/axiosHooks';
+const SELECT_URL = 'api_laper/ambildata';
+
 import Swal from 'sweetalert2';
 import { TableDinamis } from '../components/TableDinamis';
 import ReactImageUploading from 'react-images-uploading';
 
 const ambilData = async ({ column, from, where }) => {
     try {
-        const response = await axios.get('http://localhost:956/api_laper/ambildata', {
+        const response = await axios.get(SELECT_URL, {
             params: {
                 column,
                 from,
