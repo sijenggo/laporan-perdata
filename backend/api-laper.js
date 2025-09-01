@@ -635,8 +635,6 @@ const queryMap = {
         WHERE
             (
                 p.alur_perkara_id <> 114
-                AND
-                p.alur_perkara_id <> 2
             )
         AND 
             (kurung.tanggal_pemberitahuan_putusan_min BETWEEN ? AND ?) `,
@@ -1503,6 +1501,32 @@ app.get("/api_laper/ambildata", (req, res) => {
         res.json({ success: true, message: "Query berhasil", data: result });
     });
 
+});
+
+app.post('/api_laper/kirimdata', (req, res) => {
+    const { table, data } = req.body; // ✅ ambil dari req.body
+    logger.info('Log API Laper kirim data'); // 🔹 Log API kirim data
+
+    if (!table || !data || typeof data !== 'object' || Array.isArray(data)) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    const columns = Object.keys(data).join(', ');
+    const placeholders = Object.keys(data).map(() => '?').join(', ');
+    const values = Object.values(data);
+
+    const query = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
+
+    db2.query(query, values, (err, result) => {
+        if (err) {
+            logger.error("Error saat mengirim data:", err);
+            console.error("Error saat mengirim data:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
+        }
+        logger.info('Data berhasil dikirim'); // 🔹 Log jika data berhasil dikirim
+        res.json({ success: true, message: "Data berhasil dikirim", insertId: result.insertId });
+    });
 });
   
 app.listen(PORT, () => {
