@@ -3,6 +3,8 @@ dotenv.config();
 
 import mysql from 'mysql';
 
+export let dbStatus = 'Belum terkoneksi';
+
 // 🔹 Gunakan createPool agar lebih stabil
 export const db = mysql.createPool({
     host: process.env.DB_2_HOST,
@@ -15,9 +17,11 @@ export const db = mysql.createPool({
 db.getConnection((err, connection) => {
     if (err) {
         console.error('❌ Error Connecting to MySQL:', err);
+        dbStatus = 'Gagal konek: ' + err.message;
         return;
     }
-    console.log(`✅ Connected to db_laper MySQL HOST = ${process.env.DB_2_HOST}`);
+    dbStatus = `Terkoneksi ke DB: ${process.env.DB_2_HOST}`;
+    console.log(dbStatus);
     connection.release(); // ✅ Lepaskan koneksi
 });
 

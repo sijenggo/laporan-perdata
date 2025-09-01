@@ -2,8 +2,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import express from "express";
-import { db as db } from "./db.js" 
-import { db as db2 } from "./db2.js"
+import { db as db, dbStatus as db1status } from "./db.js" 
+import { db as db2, dbStatus as db2status } from "./db2.js"
 import path from "path";
 import * as fs from 'fs'; // untuk stream, readFileSync, dll
 import { fileURLToPath } from "url";
@@ -1528,8 +1528,13 @@ app.post('/api_laper/kirimdata', (req, res) => {
         res.json({ success: true, message: "Data berhasil dikirim", insertId: result.insertId });
     });
 });
+
+// ✅ API cek status
+app.get('/', (req, res) => {
+    logger.info(`Server running in PORT: ${PORT}`);
+    res.end(`Status Koneksi DB :\n${db1status}\n${db2status}\n`);
+});
   
 app.listen(PORT, () => {
     logger.info(`✅ Server listening ON PORT ${PORT}`);
-    console.log(`✅ Server listening ON PORT ${PORT}`);
 });
