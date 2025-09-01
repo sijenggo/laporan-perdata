@@ -9,7 +9,7 @@ import {
   cilPlus
 } from '@coreui/icons'
 
-export const TableDinamis = ({columns, data, updateData, SelectTemuan}) =>{
+export const TableDinamis = ({columns, data, updateData, RenderSelect}) =>{
     const table = useReactTable({
         columns,
         data,
@@ -77,7 +77,7 @@ export const TableDinamis = ({columns, data, updateData, SelectTemuan}) =>{
                 </CTableFoot>
             </CTable>
             <>
-                {SelectTemuan}
+                {RenderSelect}
             </>
         </>
     )

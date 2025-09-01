@@ -41,6 +41,7 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 
 import axios from '../components/axiosHooks';
 const SELECT_URL = 'api_laper/ambildata';
+const INSERT_URL = 'api_laper/kirimdata';
 
 import Swal from 'sweetalert2';
 import { TableDinamis } from '../components/TableDinamis';
@@ -71,6 +72,7 @@ const Monev = () =>{
     const queryClient = useQueryClient();
 
     const [dateMonev, setDateMonev] = useState(firstDayOfMonth);
+    const [dateUndanganMonev, setDateUndanganMonev] = useState(firstDayOfMonth);
 
     const handleChangeDate = (newDate) => {
         setStartDate(newDate);
@@ -89,8 +91,6 @@ const Monev = () =>{
     });
 
     const [idjudulMonev, setIdJudul] = useState(null);
-    const [previewURL, setPreviewURL] = useState(null);
-
     const [selectedJudul, setSelectedJudul] = useState(null);
 
     const handleChangeSelect = (selectedOption) => {
@@ -105,7 +105,7 @@ const Monev = () =>{
 
     const tambahJudulMutation = useMutation({
         mutationFn: async (judulBaru) => {
-            const res = await axios.post("http://localhost:956/api_laper/kirimdata", {
+            const res = await axios.post(INSERT_URL, {
                 table: "tb_judul",
                 data: { judul: judulBaru }, // ✅ cukup kirim judul
             });
@@ -113,17 +113,18 @@ const Monev = () =>{
         },
         onSuccess: (data, judulBaru) => {
           if (data.success) {
-            Swal.fire({title : 'Tambah Judul',icon: 'success', 'text' : 'Berhasil menambahkan judul baru!'});
-            // Tambahin ke cache react-query biar gak nunggu refetch
-            queryClient.setQueryData(["judulMonev"], (old = []) => [
-              ...old,
-              { value: data.insertId, label: judulBaru },
-            ]);
-    
-            // Set select langsung ke judul baru
+            Swal.fire({title : 'Tambah Judul',icon: 'success', 'text' : 'Ciye bikin judul baru!'});
+            queryClient.invalidateQueries(['judulMonev']);    
             setIdJudul({ value: data.insertId, label: judulBaru });
             setSelectedJudul({ value: data.insertId, label: judulBaru });
           }
+        },
+        onError: (error) => {
+            Swal.fire({
+                title: "Gagal Tambah Judul",
+                text: error?.response?.data?.message || error.message || "Error woy error.",
+                icon: "error",
+            });
         },
     });
 
@@ -139,19 +140,10 @@ const Monev = () =>{
     });
 
     const [temuanMonev, setTemuanMonev] = useState([]);
+    const [absensiMonev, setAbsensiMonev] = useState([]);
 
     const { data: dataTemuan = [], isLoading: isLoadingTemuan, error: errorDataTemuan } = useQuery({
         queryKey: ['dataTemuan'],
-        queryFn: () =>
-            ambilData({
-                column: 'id AS value, temuan AS label',
-                from: 'tb_temuan',
-                where: 1,
-            }),
-    });
-
-    const { data: dataTemuanMonev = [], isLoading: isLoadingTemuanMonev, error: errorDataTemuanMonev } = useQuery({
-        queryKey: ['dataTemuanMonev'],
         queryFn: () =>
             ambilData({
                 column: '*',
@@ -159,24 +151,66 @@ const Monev = () =>{
                 where: 1,
             }),
     });
+
+    const selectTemuan = useMemo(() => {
+        if (!dataTemuan || dataTemuan.length === 0) return [];
+        return dataTemuan.map(item => ({
+            value: item.id,
+            label: item.temuan
+        }));
+    }, [dataTemuan]);
+
+    const { data: dataPegawai = [] } = useQuery({
+        queryKey: ['dataPegawai'],
+        queryFn: () =>
+            ambilData({
+                column: '*',
+                from: 'tb_ttd',
+                where: 1,
+            }),
+    });
+
+    const selectPegawai = useMemo(() =>{
+        if (!dataPegawai || dataPegawai.length === 0) return [];
+        return dataPegawai.map(item => ({
+            value: item.id,
+            label: `${item.nama} | ${item.jabatan}`,
+        }));
+    }, [dataPegawai]);
     
     useEffect(() => {
-        if (dataMonev && dataMonev.length > 0 && dataTemuan.length > 0) {
-            // Ambil string "1,2,3" lalu ubah ke array angka [1,2,3]
+        if (dataMonev && dataMonev.length > 0) {
             const temuanIds = dataMonev[0].temuan.split(",").map((id) => id.trim()).filter(Boolean);
-        
-            // Filter dataTemuan berdasarkan id
-            const filtered = dataTemuanMonev.filter((item) =>
+            const pegawaiIds = dataMonev[0].absen.split(",").map((id) => id.trim()).filter(Boolean);
+
+            const filteredTemuan = dataTemuan.filter((item) =>
                 temuanIds.includes(String(item.id))
             );
-        
-            setTemuanMonev(filtered);
+
+            const filteredAbsensi = dataPegawai.filter((item) =>
+                pegawaiIds.includes(String(item.id))
+            );
+
+            setTemuanMonev((prev) => {
+                const sameLength = prev.length === filteredTemuan.length;
+                const sameContent = sameLength && prev.every((p, i) => p.id === filteredTemuan[i].id);
+                return sameContent ? prev : filteredTemuan;
+            });
+
+            setAbsensiMonev((prev) => {
+                const sameLength = prev.length === filteredAbsensi.length;
+                const sameContent = sameLength && prev.every((p, i) => p.id === filteredAbsensi[i].id);
+                return sameContent ? prev : filteredAbsensi;
+            });
+        } else {
+            setTemuanMonev((prev) => (prev.length > 0 ? [] : prev));
+            setAbsensiMonev((prev) => (prev.length > 0 ? [] : prev));
         }
-    }, [dataMonev, dataTemuan]);
+    }, [dataMonev, dataTemuan, dataPegawai]);
 
     const tambahTemuanMutation = useMutation({
         mutationFn: async (temuan) => {
-            const res = await axios.post("http://localhost:956/api_laper/kirimdata", {
+            const res = await axios.post(INSERT_URL, {
                 table: "tb_temuan",
                 data: temuan, // ✅ cukup kirim judul
             });
@@ -185,14 +219,17 @@ const Monev = () =>{
         onSuccess: (data, temuanBaru) => {
           if (data.success) {
             Swal.fire({title : 'Tambah Judul',icon: 'success', 'text' : 'Berhasil menambahkan judul baru!'});
-            const filter = { value: data.insertId, label: temuanBaru.temuan };
-            
-            queryClient.setQueryData(["dataTemuanMonev"], (old = []) => [
-              ...old,{ id: data.insertId, temuan: temuanBaru.temuan, kendala: temuanBaru.kendala, rekomendasi: temuanBaru.rekomendasi, ket: temuanBaru.ket }
-            ]);
-            
-            setTemuanMonev([...temuanMonev, filter]);
+            //console.log(data, temuanBaru);           
+            queryClient.invalidateQueries(['dataTemuan']);
+            setTemuanMonev([...temuanMonev, temuanBaru]);
           }
+        },
+        onError: (error) => {
+            Swal.fire({
+                title: "Gagal Tambah Temuan",
+                text: error?.response?.data?.message || error.message || "Error woy error.",
+                icon: "error",
+            });
         },
     });
 
@@ -200,9 +237,18 @@ const Monev = () =>{
         return(
             <>
                 <CreateableSelect
-                    options={dataTemuan}
+                    options={selectTemuan}
                     isClearable
                     onChange={(data) => {
+                        if(!idjudulMonev || !date1){
+                            Swal.fire({
+                                title: 'Pilih Judul dan Periode Terlebih Dahulu',
+                                text: 'Yoo pilih judul monevnya dahulu dongs..',
+                                icon: 'warning',
+                            });
+                            return;
+                        }
+
                         if (data) {
                             // Cek duplikat
                             const exists = temuanMonev.some((item) => item.id === data.value);
@@ -215,7 +261,7 @@ const Monev = () =>{
                                 return;
                             }
 
-                            const filter = dataTemuanMonev.find(
+                            const filter = dataTemuan.find(
                                 (item) => String(item.id) === String(data.value)
                             );
                             setTemuanMonev([...temuanMonev, filter]);
@@ -258,6 +304,46 @@ const Monev = () =>{
         )
     };
 
+    const SelectPegawai = () =>{
+        return(
+            <>
+                <CreateableSelect
+                    options={selectPegawai}
+                    isClearable
+                    onChange={(data) => {
+                        if(!idjudulMonev || !date1){
+                            Swal.fire({
+                                title: 'Pilih Judul dan Periode Terlebih Dahulu',
+                                text: 'Yoo pilih judul monevnya dahulu dongs..',
+                                icon: 'warning',
+                            });
+                            return;
+                        }
+
+                        if (data) {
+                            // Cek duplikat
+                            const exists = absensiMonev.some((item) => item.id === data.value);
+                            if (exists) {
+                                Swal.fire({
+                                    title: 'Duplikat Pegawai',
+                                    text: 'Pegawai sudah ada dalam daftar.',
+                                    icon: 'warning',
+                                });
+                                return;
+                            }
+
+                            const filter = dataPegawai.find(
+                                (item) => String(item.id) === String(data.value)
+                            );
+                            setAbsensiMonev([...absensiMonev, filter]);
+                        }
+                    }}                    
+                    placeholder="Pilih atau ketik pegawai yg ada..."
+                />
+            </>
+        )
+    };
+
     const columnHelper = createColumnHelper();
     
     const columns = [
@@ -285,6 +371,29 @@ const Monev = () =>{
             id: 'ket',
             header: () => 'Ket',
             cell: ({ row }) => <p className="m-0">{row.original.ket}</p>
+        }),
+    ];
+
+    const columnsAbsen = [
+		columnHelper.display({
+		  id: 'no',
+		  header: () => 'No',
+		  cell: ({ row }) => row.index + 1,
+		}),
+        columnHelper.accessor('nama', {
+            id: 'nama',
+            header: () => 'Nama',
+            cell: ({ row }) => <p className="m-0">{row.original.nama}</p>
+        }),
+        columnHelper.accessor('jabatan', {
+            id: 'jabatan',
+            header: () => 'jabatan',
+            cell: ({ row }) => <p className="m-0">{row.original.jabatan}</p>
+        }),
+        columnHelper.accessor('ttd', {
+            id: 'ttd',
+            header: () => 'TTD',
+            cell: ({ row }) => <p className="m-0">{row.original.ttd}</p>
         }),
     ];
 
@@ -374,7 +483,7 @@ const Monev = () =>{
                                                             <DatePicker 
                                                                 selected={dateMonev}
                                                                 dateFormat="EEEE, d MMMM yyyy 'Pukul' HH:mm"
-                                                                className='form-control w-130'
+                                                                className='form-control w-150'
                                                                 onChange={(date) => setDateMonev(date)}                                                                                                                             
                                                                 locale={id}
                                                                 showTimeSelect
@@ -413,7 +522,94 @@ const Monev = () =>{
                                                         </div>
                                                         <CFormLabel className="col-form-label text-truncate small fs-6">Temuan</CFormLabel>
                                                         <div className='m-0 ps-3' >
-                                                            <TableDinamis data={temuanMonev} columns={columns} SelectTemuan={<SelectTemuan />} />
+                                                            <TableDinamis data={temuanMonev} columns={columns} RenderSelect={<SelectTemuan />} />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Tanggal Notulen Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <DatePicker 
+                                                                selected={dateMonev}
+                                                                dateFormat="EEEE, d MMMM yyyy"
+                                                                className='form-control w-120'                                                                                                                        
+                                                                locale={id}
+                                                                disabled
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Tempat Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <CFormInput 
+                                                                placeholder="Tempat Rapat Monev" 
+                                                                autoComplete="tempat"
+                                                                name='tempat'
+                                                                type='text'
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Peserta Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <CFormTextarea
+                                                                placeholder='Peserta Rapat Monev'
+                                                                autoComplete='peserta'
+                                                                rows={4}
+                                                                name='peserta'
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Pimpinan Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>                                                            
+                                                            <CreateableSelect
+                                                                options={selectPegawai}
+                                                                placeholder="Pilih atau ketik pimpinan monev..."
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Notulis Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>                                                            
+                                                            <CreateableSelect
+                                                                options={selectPegawai}
+                                                                placeholder="Pilih atau ketik notulis monev..."
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Tanya Jawab (di notulen Monev)</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <CFormTextarea
+                                                                placeholder='Tanya Jawab Rapat Monev'
+                                                                autoComplete='tanya'
+                                                                rows={6}
+                                                                name='tanya'
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Nomor Surat Undangan Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <CFormInput 
+                                                                placeholder="Nomor Surat Undangan Monev" 
+                                                                autoComplete="nomor_surat"
+                                                                name='nomor_surat'
+                                                                type='text'
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Tanggal Surat Undangan Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <DatePicker 
+                                                                selected={dateUndanganMonev}
+                                                                dateFormat="EEEE, d MMMM yyyy"
+                                                                className='form-control w-120'
+                                                                onChange={(date) => setDateUndanganMonev(date)}                                                                                                                             
+                                                                locale={id}
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Tujuan Surat Undangan Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <CFormTextarea
+                                                                placeholder='Tujuan Surat Undangan Monev'
+                                                                autoComplete='tujuan_surat'
+                                                                rows={4}
+                                                                name='tujuan_surat'
+                                                            />
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Dokumentasi Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            belum ada
+                                                        </div>
+                                                        <CFormLabel className="col-form-label text-truncate small fs-6">Absensi Peserta Monev</CFormLabel>
+                                                        <div className='m-0 ps-3'>
+                                                            <TableDinamis data={absensiMonev} columns={columnsAbsen} RenderSelect={<SelectPegawai />} />
                                                         </div>
                                                     </>
                                                 )}
