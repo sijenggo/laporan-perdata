@@ -21,6 +21,10 @@
     "@coreui/react": "^5.5.0",
     "@coreui/react-chartjs": "^3.0.0",
     "@coreui/utils": "^2.0.2",
+    "@fortawesome/fontawesome-free": "^7.0.0",
+    "@fortawesome/fontawesome-svg-core": "^7.0.0",
+    "@fortawesome/free-solid-svg-icons": "^7.0.0",
+    "@fortawesome/react-fontawesome": "^0.2.3",
     "@reduxjs/toolkit": "^2.7.0",
     "@tanstack/react-query": "^5.74.4",
     "@tanstack/react-table": "^8.21.3",
@@ -28,6 +32,7 @@
     "bootstrap": "^5.3.5",
     "core-js": "^3.41.0",
     "date-fns": "^4.1.0",
+    "formik": "^2.4.6",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",
     "react-datepicker": "^8.3.0",
@@ -39,7 +44,8 @@
     "react-select": "^5.10.1",
     "redux-persist": "^6.0.0",
     "simplebar-react": "^3.3.0",
-    "sweetalert2": "^11.21.0"
+    "sweetalert2": "^11.21.0",
+    "yup": "^1.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

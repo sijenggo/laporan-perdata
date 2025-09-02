@@ -31,8 +31,8 @@ import {
 } from '@coreui/icons'
 import { useQuery } from '@tanstack/react-query';
 
-import axios from '../components/axois'
-const SELECT = '/ambil_data';
+import axios from '../components/axiosHooks'
+const SELECT = 'api/ambil_data';
 
 const ambilData = async ({ column, from, where }) => {
     try{

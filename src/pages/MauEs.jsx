@@ -42,8 +42,8 @@ import {
 } from '@coreui/icons'
 import { useQuery, useQueries, useQueryClient } from '@tanstack/react-query';
 
-import axios from '../components/axois'
-const SELECT = '/data_eis';
+import axios from '../components/axiosHooks'
+const SELECT = 'api/data_eis';
 
 const ambilDataEis = async ({ unsur, date1, date2 }) => {
     try{
@@ -222,7 +222,7 @@ const MauEs = () =>{
                     judul: '10. Pelaksanaan Minutasi',
                     detail: 'Ketepatan waktu dalam melakukan minutasi dalam waktu 7 Hari (Pidana) dan 14 Hari (Perdata)',
                 },
-                {
+                /*{
                     unsur: 'kep11',
                     judul: '11. Penginputan Permohonan Banding',
                     detail: 'Kepatuhan waktu dalam input Permohonan Banding dalam waktu 1x24 jam',
@@ -263,7 +263,7 @@ const MauEs = () =>{
                             b. Penerimaan Memori PK
                             c. Penerimaan Kontra Memori PK
                             d. Pengiriman Berkas PK ke Mahkamah Agung`,
-                },
+                }*/,
                 {
                     unsur: 'kep17',
                     judul: '17. Pemberitahuan Putusan/Penetapan',
@@ -293,22 +293,22 @@ const MauEs = () =>{
                     unsur: 'kep22',
                     judul: '22. Penginputan Data Pelaksanaan Delegasi',
                     detail: 'Kepatuhan waktu dalam input Data Pelaksanaan Delegasi dalam waktu 1x24 jam',
-                },
+                },/*
                 {
                     unsur: 'kep23',
                     judul: '23. Kepatuhan Penundaan Jadwal Sidang (Query masih belum pasti)',
                     detail: 'Kepatuhan input penundaan jadwal sidang dalam waktu 1x24 jam (Query masih belum pasti)',
-                },
+                }*/,
                 {
                     unsur: 'kep24',
                     judul: '24. Penginputan Penetapan Perpanjangan Penahanan',
                     detail: 'Kepatuhan penginputan perpanjangan penahanan maksimal 1x24 jam sejak tanggal penetapan',
-                },
+                },/*
                 {
                     unsur: 'kep25',
                     judul: '25. Unggah Putusan Akhir (Query masih belum pasti)',
                     detail: 'Kepatuhan unggah dokumen Putusan Akhir maksimal 1x24 jam sejak tanggal putus (Query masih belum pasti)',
-                },
+                }*/,
                 ]
             },
             { header: "kelengkapan",
@@ -317,7 +317,7 @@ const MauEs = () =>{
                     unsur: 'kel1',
                     judul: '1. E-Document Dakwaan/Petitum',
                     detail: 'Kelengkapan Dokumen Elektronik dalam pendaftaran perkara (Data Umum)',
-                },
+                },/*
                 {
                     unsur: 'kel2',
                     judul: '2. Pencatatan Saksi (Query masih belum pasti)',
@@ -327,7 +327,7 @@ const MauEs = () =>{
                     unsur: 'kel3',
                     judul: '3. E-Document Tuntutan (Query masih belum pasti)',
                     detail: 'Kelengkapan Dokumen Elektronik Tuntutan (Query masih belum pasti)',
-                },
+                }*/,
                 {
                     unsur: 'kel4',
                     judul: '4. E-Document Putusan Akhir/Penetapan',
@@ -352,7 +352,7 @@ const MauEs = () =>{
                     unsur: 'kel8',
                     judul: '8. Dokumen Elektronik Berita Acara Sidang',
                     detail: 'Ketersediaan Dokumen Berita Acara Sidang',
-                },
+                }/*,
                 {
                     unsur: 'kel9',
                     judul: '9. Dokumen Elektronik Relaas Panggilan Sidang Pertama',
@@ -362,7 +362,7 @@ const MauEs = () =>{
                     unsur: 'kel10',
                     judul: '10. Dokumen Elektronik Rencana Persidangan (Court Callendar) (Query masih belum pasti)',
                     detail: 'Ketersediaan Dokumen Elektronik Rencana Persidangan (Court Callendar) (Query masih belum pasti)',
-                },
+                }*/,
                 {
                     unsur: 'kel11',
                     judul: '11. Dokumen Elektronik Putusan Anonimisasi',
@@ -401,12 +401,12 @@ const MauEs = () =>{
                     unsur: 'kes6',
                     judul: '6. Sisa Biaya Perkara Tk Pertama',
                     detail: 'Kesesuaian pencatatan pengembalian sisa panjar',
-                },
+                }/*,
                 {
                     unsur: 'kes10',
                     judul: '10. Pengarsipan Perkara (Query masih belum pasti)',
                     detail: 'Kesesuaian Waktu Pelaksanaan Pengarsipan Perkara (Query masih belum pasti)',
-                }
+                }*/
             ]
         },
     ];
@@ -437,7 +437,7 @@ const MauEs = () =>{
         }, {});
     }, [queries]);
 
-    console.log(dataMap);
+    //console.log(dataMap);
 
     return(
         <>

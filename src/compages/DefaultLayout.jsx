@@ -3,6 +3,8 @@ import { Outlet } from 'react-router-dom'
 import { AppSidebar, AppFooter, AppHeader } from './index'
 import { CContainer, CSpinner } from '@coreui/react'
 
+import "@fortawesome/fontawesome-free/css/all.min.css";
+
 const DefaultLayout = () => {
   return (
     <div>

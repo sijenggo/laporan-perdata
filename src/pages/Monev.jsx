@@ -3,7 +3,6 @@ import DatePicker from 'react-datepicker'
 import { subMonths } from "date-fns";
 import { id } from 'date-fns/locale';
 import { formattedBulanSajaNumber, formattedTahunSajaNumber, formattedBulanSaja, formattedDate, formattedDateTime, formattedTime, formattedTimeMysql, formattedTgl, formattedTahunSaja, alur_permohonan, alur_gugatan, alur_gugatan_sederhana } from '../components/services';
-import Dropzone from 'react-dropzone';
 import RSelect from 'react-select';
 import CreateableSelect from 'react-select/creatable';
 import { createColumnHelper } from '@tanstack/react-table';
@@ -29,23 +28,42 @@ import {
   CFormTextarea,
   CFormSelect,
   CImage,
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
 } from '@coreui/react'
 
 import CIcon from '@coreui/icons-react'
-import {
-  cilCloudDownload,
-  cilWarning,
-  cilThumbUp
-} from '@coreui/icons'
+import * as icons from '@coreui/icons'
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import * as faicons from '@fortawesome/free-solid-svg-icons';
+
 import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import axios from '../components/axiosHooks';
 const SELECT_URL = 'api_laper/ambildata';
 const INSERT_URL = 'api_laper/kirimdata';
+const INSERT_PEGAWAI_URL = 'api_laper/kirimdatapegawai';
 
 import Swal from 'sweetalert2';
 import { TableDinamis } from '../components/TableDinamis';
 import ReactImageUploading from 'react-images-uploading';
+
+import { Formik } from 'formik';
+import * as Yup from 'yup';
+
+const validationSchemaPegawai = Yup.object({
+    nama: Yup.string()
+        .matches(/^[A-Za-z\s]+$/, 'Nama pegawai yg bener isinya, jgn alay')
+        .required('Tidak boleh kosong woyy!'),
+    jabatan: Yup.string()
+        .matches(/^[A-Za-z\s]+$/, 'Jabatan pegawai yg bener isinya, jgn alay')
+        .required('Tidak boleh kosong woyy!'),
+});
+
 
 const ambilData = async ({ column, from, where }) => {
     try {
@@ -208,6 +226,105 @@ const Monev = () =>{
         }
     }, [dataMonev, dataTemuan, dataPegawai]);
 
+    const [showModalPegawai, setShowModalPegawai] = useState(false);
+    const [images, setImages] = useState([]);
+    const maxNumber = 1;
+
+    const imgOnChange = (imageList, addUpdateIndex) =>{
+        //console.log(imageList, addUpdateIndex);
+        setImages(imageList);
+    }
+    
+    const tambahPegawaiMutation = useMutation({
+        mutationFn: async (pegawaiBaru) => {
+            // pegawaiBaru = FormData dari handleSavePegawai
+            const res = await axios.post(INSERT_PEGAWAI_URL, pegawaiBaru, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+            return res.data;
+        },
+        onSuccess: (data) => {
+            if (data.success) {
+                Swal.fire({
+                    title: "Tambah Pegawai",
+                    icon: "success",
+                    text: "Ciye bikin pegawai baru!",
+                });
+                //setAbsensiMonev((prev) => [...prev, data.pegawai]);
+                queryClient.invalidateQueries(["dataPegawai"]);
+            }
+        },
+        onError: (error) => {
+            Swal.fire({
+                title: "Gagal Tambah Pegawai",
+                text: error?.response?.data?.message || error.message || "Error woy error.",
+                icon: "error",
+            });
+        },
+    });
+
+    const handleSavePegawai = (values, resetForm) => {
+        const formData = new FormData();
+        formData.append("table", "tb_ttd");  
+
+        const payload = {
+            nama: values.nama,
+            jabatan: values.jabatan,
+        };
+        formData.append("data", JSON.stringify(payload)); 
+
+        if (images.length > 0) {
+            const file = images[0].file;
+            formData.append("ttd", file);
+        }
+        tambahPegawaiMutation.mutate(formData);
+    };
+
+    const handleCreatePegawai = () =>{
+        setShowModalPegawai(true);
+    };
+
+    const SelectPegawai = () =>{
+        return(
+            <>
+                <CreateableSelect
+                    options={selectPegawai}
+                    isClearable
+                    onChange={(data) => {
+                        if(!idjudulMonev || !date1){
+                            Swal.fire({
+                                title: 'Pilih Judul dan Periode Terlebih Dahulu',
+                                text: 'Yoo pilih judul monevnya dahulu dongs..',
+                                icon: 'warning',
+                            });
+                            return;
+                        }
+
+                        if (data) {
+                            // Cek duplikat
+                            const exists = absensiMonev.some((item) => item.id === data.value);
+                            if (exists) {
+                                Swal.fire({
+                                    title: 'Duplikat Pegawai',
+                                    text: 'Pegawai sudah ada dalam daftar.',
+                                    icon: 'warning',
+                                });
+                                return;
+                            }
+
+                            const filter = dataPegawai.find(
+                                (item) => String(item.id) === String(data.value)
+                            );
+                            setAbsensiMonev([...absensiMonev, filter]);
+                        }
+                    }}
+                    onCreateOption={() => handleCreatePegawai()}                   
+                    placeholder="Pilih atau ketik pegawai yg ada..."
+                />
+            </>
+        )
+    };
+
     const tambahTemuanMutation = useMutation({
         mutationFn: async (temuan) => {
             const res = await axios.post(INSERT_URL, {
@@ -221,7 +338,7 @@ const Monev = () =>{
             Swal.fire({title : 'Tambah Judul',icon: 'success', 'text' : 'Berhasil menambahkan judul baru!'});
             //console.log(data, temuanBaru);           
             queryClient.invalidateQueries(['dataTemuan']);
-            setTemuanMonev([...temuanMonev, temuanBaru]);
+            //setTemuanMonev([...temuanMonev, temuanBaru]);
           }
         },
         onError: (error) => {
@@ -304,46 +421,6 @@ const Monev = () =>{
         )
     };
 
-    const SelectPegawai = () =>{
-        return(
-            <>
-                <CreateableSelect
-                    options={selectPegawai}
-                    isClearable
-                    onChange={(data) => {
-                        if(!idjudulMonev || !date1){
-                            Swal.fire({
-                                title: 'Pilih Judul dan Periode Terlebih Dahulu',
-                                text: 'Yoo pilih judul monevnya dahulu dongs..',
-                                icon: 'warning',
-                            });
-                            return;
-                        }
-
-                        if (data) {
-                            // Cek duplikat
-                            const exists = absensiMonev.some((item) => item.id === data.value);
-                            if (exists) {
-                                Swal.fire({
-                                    title: 'Duplikat Pegawai',
-                                    text: 'Pegawai sudah ada dalam daftar.',
-                                    icon: 'warning',
-                                });
-                                return;
-                            }
-
-                            const filter = dataPegawai.find(
-                                (item) => String(item.id) === String(data.value)
-                            );
-                            setAbsensiMonev([...absensiMonev, filter]);
-                        }
-                    }}                    
-                    placeholder="Pilih atau ketik pegawai yg ada..."
-                />
-            </>
-        )
-    };
-
     const columnHelper = createColumnHelper();
     
     const columns = [
@@ -372,6 +449,36 @@ const Monev = () =>{
             header: () => 'Ket',
             cell: ({ row }) => <p className="m-0">{row.original.ket}</p>
         }),
+		columnHelper.display({
+		  id: 'aksi',
+		  header: () => 'Aksi',
+		  cell: ({ row }) => {
+            return (
+                <CButton 
+                    color="danger" 
+                    className='text-white'
+                    size="sm" 
+                    onClick={() => {
+                        const temuanToRemove = row.original;
+                        Swal.fire({
+                            title: 'Hapus Temuan',
+                            text: `Yakin menghapus temuan: "${temuanToRemove.temuan}" dari daftar?`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Ya, Hapus!',
+                            cancelButtonText: 'Batal',
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                setTemuanMonev(temuanMonev.filter(item => item.id !== temuanToRemove.id));
+                            }
+                        });
+                    }}
+                >
+                    Hapus
+                </CButton>
+            );
+          },
+		}),
     ];
 
     const columnsAbsen = [
@@ -395,6 +502,36 @@ const Monev = () =>{
             header: () => 'TTD',
             cell: ({ row }) => <p className="m-0">{row.original.ttd}</p>
         }),
+		columnHelper.display({
+		  id: 'aksi',
+		  header: () => 'Aksi',
+		  cell: ({ row }) => {
+            return (
+                <CButton 
+                    color="danger" 
+                    className='text-white'
+                    size="sm" 
+                    onClick={() => {
+                        const absenToRemove = row.original;
+                        Swal.fire({
+                            title: 'Hapus Temuan',
+                            text: `Yakin menghapus: "${absenToRemove.nama}" dari daftar?`,
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Ya, Hapus!',
+                            cancelButtonText: 'Batal',
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                setAbsensiMonev(absensiMonev.filter(item => item.id !== absenToRemove.id));
+                            }
+                        });
+                    }}
+                >
+                    Hapus
+                </CButton>
+            );
+          },
+		}),
     ];
 
     return(
@@ -427,12 +564,12 @@ const Monev = () =>{
 
                     {idjudulMonev && dataMonev.length > 0 ? (
                         <CAlert color="success" className="d-flex align-items-center">
-                            <CIcon icon={cilThumbUp} className="flex-shrink-0 me-2" width={24} height={24} />
+                            <CIcon icon={icons.cilThumbUp} className="flex-shrink-0 me-2" width={24} height={24} />
                             <div>Monevnya ada cuyy</div>
                         </CAlert>
                     ) : idjudulMonev && dataMonev.length == 0 ? (
                         <CAlert color="warning" className="d-flex align-items-center">
-                            <CIcon icon={cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
+                            <CIcon icon={icons.cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
                             <div>Monevnya belom ada hayoo ..</div>
                         </CAlert>
                     ) : !idjudulMonev && dataMonev.length == 0 ? (
@@ -453,7 +590,7 @@ const Monev = () =>{
                                                     </div>
                                                 ) : errorJudulMonev ? (
                                                     <CAlert color="warning" className="d-flex align-items-center">
-                                                        <CIcon icon={cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
+                                                        <CIcon icon={icons.cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
                                                         <div>Error dalam pengambilan data</div>
                                                     </CAlert>
                                                 ) : (
@@ -473,7 +610,7 @@ const Monev = () =>{
                                                     </div>
                                                 ) : errorDataMonev ? (
                                                     <CAlert color="warning" className="d-flex align-items-center">
-                                                        <CIcon icon={cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
+                                                        <CIcon icon={icons.cilWarning} className="flex-shrink-0 me-2" width={24} height={24} />
                                                         <div>Error dalam pengambilan data</div>
                                                     </CAlert>
                                                 ) : (
@@ -556,6 +693,8 @@ const Monev = () =>{
                                                         <div className='m-0 ps-3'>                                                            
                                                             <CreateableSelect
                                                                 options={selectPegawai}
+                                                                onCreateOption={() => handleCreatePegawai()}
+                                                                isClearable
                                                                 placeholder="Pilih atau ketik pimpinan monev..."
                                                             />
                                                         </div>
@@ -563,6 +702,8 @@ const Monev = () =>{
                                                         <div className='m-0 ps-3'>                                                            
                                                             <CreateableSelect
                                                                 options={selectPegawai}
+                                                                onCreateOption={() => handleCreatePegawai()}
+                                                                isClearable
                                                                 placeholder="Pilih atau ketik notulis monev..."
                                                             />
                                                         </div>
@@ -622,6 +763,107 @@ const Monev = () =>{
                     </CRow>
                 </CCardBody>
             </CCard>
+            <CModal 
+                visible={showModalPegawai} 
+                onClose={() => setShowModalPegawai(false)}
+                alignment="center"
+                aria-labelledby="VerticallyCentered"
+                scrollable
+                backdrop='static'
+                keyboard
+            >
+                <CModalHeader closeButton={() => setShowModalPegawai(false)}>
+                    <CModalTitle>Tambah Pegawai</CModalTitle>
+                </CModalHeader>                
+                <Formik
+                    initialValues={{
+                        nama: '',
+                        jabatan: '',
+                    }}
+                    validationSchema={validationSchemaPegawai}
+                    onSubmit={(values, { resetForm }) => {
+                        handleSavePegawai(values, resetForm);
+                    }}
+                >
+                    {formik => (
+                        <>
+                            <CModalBody>    
+                                <CForm>
+                                    <CFormInput 
+                                        value={formik.values.nama}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        invalid={formik.touched.nama && !!formik.errors.nama}
+                                        feedbackInvalid={formik.errors.nama}
+                                        placeholder="Input Nama Pegawai" 
+                                        autoComplete="nama"
+                                        name='nama'
+                                        type='text'
+                                        label="Nama Pegawai"
+                                    />
+                                    <CFormInput 
+                                        value={formik.values.jabatan}
+                                        onChange={formik.handleChange}
+                                        onBlur={formik.handleBlur}
+                                        invalid={formik.touched.jabatan && !!formik.errors.jabatan}
+                                        feedbackInvalid={formik.errors.jabatan}
+                                        placeholder="Input Jabatan Pegawai" 
+                                        autoComplete="jabatan"
+                                        name='jabatan'
+                                        type='text'
+                                        label="Jabatan Pegawai"
+                                    />
+                                    <div className='mb-3'></div>
+                                    <ReactImageUploading
+                                        multiple
+                                        value={images}
+                                        maxNumber={maxNumber}
+                                        maxFileSize={5000000}
+                                        onChange={imgOnChange}
+                                        dataURLKey='data_url'
+                                        acceptType={['png']}    
+                                    >
+                                        {({
+                                            imageList,
+                                            onImageUpload,
+                                            onImageRemoveAll,
+                                            onImageUpdate,
+                                            onImageRemove,
+                                            isDragging,
+                                            dragProps,
+                                        }) => ( 
+                                            <div 
+                                                className='dropzone'
+                                                onClick={onImageUpload}
+                                            >
+                                                <div {...dragProps} className={`${isDragging ? 'dragging' : ''}`}>
+                                                        <CRow className='flex-wrap justify-content-start'>
+                                                            {imageList.map((image, index) => (
+                                                                <CCol key={index}>
+                                                                    <div className="image-item">
+                                                                        <CImage rounded thumbnail src={image.data_url} alt="" width="100" />
+                                                                        <div className="image-item__btn-wrapper">
+                                                                            <CButton color='danger' size='sm' className='mt-2' onClick={() => onImageRemove(index)}><CIcon icon={icons.cilTrash} /></CButton>
+                                                                        </div>
+                                                                    </div>
+                                                                </CCol>
+                                                            ))}
+                                                        </CRow>
+                                                    <p className='mt-1' style={{'fontSize' : '13px'}}>Tarik dan Letakan / Klik untuk pilih Specimen TTD mu disini <b>(hanya menerima PNG tanpa BACKGROUND dan MAX 1 Pcs saja!)</b></p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </ReactImageUploading>
+                                </CForm>
+                            </CModalBody>
+                            <CModalFooter>
+                                <CButton color="secondary" onClick={() => setShowModalPegawai(false)}><FontAwesomeIcon icon={faicons.faClose} color='white' />Tutup</CButton>
+                                <CButton color="primary" onClick={() => formik.submitForm()}><FontAwesomeIcon icon={faicons.faSave} color='white' /> Simpan</CButton>
+                            </CModalFooter>
+                        </>
+                    )}
+                </Formik>
+            </CModal>
         </>
     );
 };

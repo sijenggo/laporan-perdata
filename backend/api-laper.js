@@ -5,7 +5,9 @@ import express from "express";
 import { db as db, dbStatus as db1status } from "./db.js" 
 import { db as db2, dbStatus as db2status } from "./db2.js"
 import path from "path";
-import * as fs from 'fs'; // untuk stream, readFileSync, dll
+import multer from 'multer';
+
+import * as fs from 'fs';
 import { fileURLToPath } from "url";
 import cors from "cors";
 
@@ -1526,6 +1528,61 @@ app.post('/api_laper/kirimdata', (req, res) => {
         }
         logger.info('Data berhasil dikirim'); // 🔹 Log jika data berhasil dikirim
         res.json({ success: true, message: "Data berhasil dikirim", insertId: result.insertId });
+    });
+});
+
+const storageTTD = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = 'TTD'; // folder fix
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const customName = req.body.filename || Date.now().toString();
+        cb(null, `ttd_${customName}${path.extname(file.originalname)}`);
+    },
+});
+  
+const uploadTTD = multer({ storage: storageTTD });
+  
+app.post('/api_laper/kirimdatapegawai', uploadTTD.single('ttd'), (req, res) => {
+    const { table, data } = req.body;
+
+    if (!table || !data) {
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    let parsedData;
+    try {
+        parsedData = JSON.parse(data);
+    } catch (e) {
+        parsedData = data;
+    }
+
+    // tambahin nama file hasil upload
+    if (req.file) {
+        parsedData.ttd = req.file.filename;
+    }
+
+    const columns = Object.keys(parsedData).join(', ');
+    const placeholders = Object.keys(parsedData).map(() => '?').join(', ');
+    const values = Object.values(parsedData);
+
+    const query = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
+
+    db2.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error saat insert:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan query" });
+        }
+
+        res.json({
+            success: true,
+            message: "Data berhasil dikirim",
+            pegawai: { id: result.insertId, ...parsedData }
+        });
     });
 });
 

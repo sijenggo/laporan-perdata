@@ -51,9 +51,10 @@ const App = () => {
 				<Route element={<DefaultLayout />}>
 					<Route index element={<Dashboard />} />
 					<Route path="dashboard" element={<Dashboard />} />
-					<Route path="lapbulperdata" element={<LaporanBulananPerdata />} />
 					<Route path="maues" element={<MauEs />} />
 					<Route path="monev" element={<Monev />} />
+					{/*<Route path="lapbulperdata" element={<LaporanBulananPerdata />} />
+					<Route path="monev" element={<Monev />} />*/}
 					<Route path="*" element={<Page404 />} />
 				</Route>
 
