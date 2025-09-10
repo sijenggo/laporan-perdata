@@ -9,7 +9,7 @@ import {
   cilPlus
 } from '@coreui/icons'
 
-export const TableDinamis = ({columns, data, updateData, RenderSelect}) =>{
+export const TableDinamis = ({columns, data, updateData, RenderSelect, KetKosong}) =>{
     const table = useReactTable({
         columns,
         data,
@@ -39,9 +39,9 @@ export const TableDinamis = ({columns, data, updateData, RenderSelect}) =>{
                 {
                     table.getRowModel().rows.length === 0 ? (
                         <tr>
-                        <td colSpan={table.getAllColumns().length} className="text-center">
-                            Tidak ada Temuan
-                        </td>
+                            <td colSpan={table.getAllColumns().length} className="text-center">
+                                {KetKosong}
+                            </td>
                         </tr>
                     ) : (
                         table.getRowModel().rows.map((row) => (

@@ -1586,6 +1586,76 @@ app.post('/api_laper/kirimdatapegawai', uploadTTD.single('ttd'), (req, res) => {
     });
 });
 
+const storageTDL = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = 'DOK'; // folder fix
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const customName = req.body.filename || Date.now().toString();
+        cb(null, `dok_${customName}${path.extname(file.originalname)}`);
+    },
+});
+  
+const uploadTDL = multer({ storage: storageTDL });
+
+app.post('/api_laper/kirimdataperbaikan', uploadTDL.single('eviden'), (req, res) => {
+    const { table, data } = req.body;
+
+    if (!table || !data) {
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    let parsedData;
+    try {
+        parsedData = JSON.parse(data);
+    } catch (e) {
+        parsedData = data;
+    }
+
+    // tambahin nama file hasil upload
+    if (req.file) {
+        parsedData.eviden = req.file.filename;
+    }
+
+    const columns = Object.keys(parsedData).join(', ');
+    const placeholders = Object.keys(parsedData).map(() => '?').join(', ');
+    const values = Object.values(parsedData);
+
+    const query = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
+
+    db2.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error saat insert:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan query" });
+        }
+
+        const temuanQuery = `SELECT temuan FROM tb_temuan WHERE id = ?`;
+        db2.query(temuanQuery, [parsedData.id_temuan], (err2, temuanResult) => {
+            if (err2) {
+                console.error("Error saat ambil temuan:", err2);
+                return res.json({ success: false, message: "Gagal ambil temuan" });
+            }
+
+            const temuan = temuanResult.length > 0 ? temuanResult[0].temuan : null;
+            delete parsedData.id_temuan;
+            parsedData.temuan = temuan;
+
+            res.json({
+                success: true,
+                message: "Data berhasil dikirim",
+                perbaikan: {
+                    id: result.insertId,
+                    ...parsedData,
+                },
+            });
+        });
+    });
+});
+
 // ✅ API cek status
 app.get('/', (req, res) => {
     logger.info(`Server running in PORT: ${PORT}`);
