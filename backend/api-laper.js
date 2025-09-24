@@ -1750,6 +1750,28 @@ app.post('/api_lemper/kirim_data_permintaan', (req, res) => {
     });
 });
 
+app.delete('/api_lemper/hapus_data', (req, res) =>{
+    const { table, id } = req.body; // ✅ ambil dari req.body
+    logger.info('Log API LEMPER hapus data'); // 🔹 Log API hapus data
+    
+    if (!table || !data) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+    
+    const query = `DELETE FROM ${table} WHERE id = ?`;
+    
+    db3.query(query, [id], (err, result) => {
+        if (err) {
+            logger.error("Error saat menghapus data:", err);
+            console.error("Error saat menghapus data:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
+        }
+        logger.info('Data berhasil dihapus'); // 🔹 Log jika data berhasil dihapus
+        res.json({ success: true, message: "Data berhasil dihapus", affectedRows: result.affectedRows });
+    });
+});
+
 // ✅ API select PTSP
 app.get("/api_ptsp/ambil_data", (req, res) => {
     const { column, from, where } = req.query; // ✅ ambil dari req.query
