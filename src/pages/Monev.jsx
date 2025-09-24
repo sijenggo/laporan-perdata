@@ -90,7 +90,7 @@ const MonevSchema = Yup.object().shape({
     tgl_notulen_monev: Yup.string().required("Tanggal notulen wajib diisi"),
     tempat: Yup.string().required("Tempat wajib diisi"),
     peserta: Yup.string().required("Peserta wajib diisi"),
-    pimpinan_monev: Yup.string().required("Pimpinan monev wajib diisi"),
+    pimpinan_monev: Yup.object().nullable().required("Pimpinan monev wajib diisi"),
     notulis_monev: Yup.string().required("Notulis monev wajib diisi"),
     tanya_jawab: Yup.string().required("Tanya jawab wajib diisi"),
     nomor_surat: Yup.string().required("Nomor surat wajib diisi"),
@@ -149,6 +149,7 @@ const Monev = () =>{
 
     const [dateMonev, setDateMonev] = useState(firstDayOfMonth);
     const [dateUndanganMonev, setDateUndanganMonev] = useState(firstDayOfMonth);
+    const [dateNotulenMonev, setDateNotulenMonev] = useState(firstDayOfMonth);
 
     const handleChangeDate = (newDate) => {
         setStartDate(newDate);
@@ -321,16 +322,19 @@ const Monev = () =>{
         }));
     }, [dataPerbaikan]);
 
-    console.log(selectPegawai)
+    //console.log(selectPegawai)
     
     useEffect(() => {
         if (dataMonev && dataMonev.length > 0) {
             setDataEdit(dataMonev[0]);
             setDateMonev(new Date(dataMonev[0].tgl_laporan_monev));
+            setDateNotulenMonev(new Date(dataMonev[0].tgl_notulen_monev));
+            formikTemuan?.setFieldValue('tgl_notulen_monev', format(dataMonev[0].tgl_notulen_monev, 'yyyy-MM-dd HH:mm:ss'));
             formikTemuan?.setFieldValue('setiap', dataMonev[0].setiap);
             formikTemuan?.setFieldValue('tempat', dataMonev[0].tempat);
             formikTemuan?.setFieldValue('peserta', dataMonev[0].peserta);
             formikTemuan?.setFieldValue('pimpinan_monev', selectPegawai.find(opt => opt.value == dataMonev[0].pimpinan_monev) || null);
+            formikTemuan?.setFieldTouched('tgl_notulen_monev', true);
 
             const temuanIds = dataMonev[0].temuan.split(",").map((id) => id.trim()).filter(Boolean);
             const pegawaiIds = dataMonev[0].absen.split(",").map((id) => id.trim()).filter(Boolean);
@@ -952,7 +956,7 @@ const Monev = () =>{
                                                 tahun: dateMonev ? format(dateMonev, "yyyy") : '',
                                                 setiap: '',
                                                 temuan: '',
-                                                tgl_notulen_monev: '',
+                                                tgl_notulen_monev: dateNotulenMonev ? dateNotulenMonev : '',
                                                 tempat: '',
                                                 peserta: '',
                                                 pimpinan_monev: '',
@@ -1112,7 +1116,7 @@ const Monev = () =>{
                                                                     <CFormLabel className="col-form-label text-truncate small fs-6">Tanggal Notulen Monev</CFormLabel>
                                                                     <div className='mb-2 ps-3'>
                                                                         <DatePicker 
-                                                                            selected={dateMonev}
+                                                                            selected={dateNotulenMonev}
                                                                             dateFormat="EEEE, d MMMM yyyy"
                                                                             className='form-control w-120'                                                                                                                        
                                                                             locale={id}
@@ -1156,10 +1160,10 @@ const Monev = () =>{
                                                                         <CreateableSelect
                                                                             options={selectPegawai}
                                                                             onCreateOption={() => handleCreatePegawai()}
-                                                                            value={formik.values.pimpinan_monev}
                                                                             isClearable
+                                                                            value={formik.values.pimpinan_monev}
                                                                             placeholder="Pilih atau ketik pimpinan monev..."
-                                                                            onChange={(data) => formik.setFieldValue('pimpinan_monev', data ? data.value : '')}
+                                                                            onChange={(data) => formik.setFieldValue('pimpinan_monev', data)}
                                                                             onBlur={() => formik.setFieldTouched('pimpinan_monev', true)}                                                                            
                                                                         />                                                                        
                                                                         {formik.errors.pimpinan_monev && formik.touched.pimpinan_monev && (

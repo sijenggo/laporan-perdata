@@ -20,7 +20,7 @@ db.getConnection((err, connection) => {
         dbStatus = 'Gagal konek: ' + err.message;
         return;
     }
-    dbStatus = `Terkoneksi ke DB: ${process.env.DB_HOST}`;
+    dbStatus = `Terkoneksi ke DB: ${process.env.DB_DATABASE}`;
     console.log(dbStatus);
     connection.release(); // ✅ Lepaskan koneksi
 });

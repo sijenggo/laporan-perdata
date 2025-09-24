@@ -4,6 +4,8 @@ dotenv.config();
 import express from "express";
 import { db as db, dbStatus as db1status } from "./db.js" 
 import { db as db2, dbStatus as db2status } from "./db2.js"
+import { db as db3, dbStatus as db3status } from "./db3.js"
+import { db as db4, dbStatus as db4status } from "./db4.js"
 import path from "path";
 import multer from 'multer';
 
@@ -1656,10 +1658,120 @@ app.post('/api_laper/kirimdataperbaikan', uploadTDL.single('eviden'), (req, res)
     });
 });
 
+// ✅ API select LEMPER
+app.get("/api_lemper/ambil_data", (req, res) => {
+    const { column, from, where } = req.query; // ✅ ambil dari req.query
+    logger.info('Log API LEMPER ambil data'); // 🔹 Log API ambil data
+
+    const query = `SELECT ${column} FROM ${from} WHERE ${where}`;
+
+    db3.query(query, (err, result) => {
+        if (err) {
+            logger.error("Error saat mengambil data:", err);
+            console.error("Error saat mengambil data:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
+        }
+        logger.info('Data berhasil diambil'); // 🔹 Log jika data berhasil diambil
+        res.json({ success: true, message: "Query berhasil", data: result });
+    });
+});
+
+app.post('/api_lemper/kirim_data', (req, res) => {
+    const { table, data } = req.body; // ✅ ambil dari req.body
+    logger.info('Log API LEMPER kirim data'); // 🔹 Log API kirim data
+
+    if (!table || !data || typeof data !== 'object' || Array.isArray(data)) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    const columns = Object.keys(data).join(', ');
+    const placeholders = Object.keys(data).map(() => '?').join(', ');
+    const values = Object.values(data);
+
+    const query = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
+
+    db3.query(query, values, (err, result) => {
+        if (err) {
+            logger.error("Error saat mengirim data:", err);
+            console.error("Error saat mengirim data:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
+        }
+        logger.info('Data berhasil dikirim'); // 🔹 Log jika data berhasil dikirim
+        res.json({ success: true, message: "Data berhasil dikirim", data: { insertId: result.insertId, ...data } });
+    });
+});
+
+app.post('/api_lemper/kirim_data_permintaan', (req, res) => {
+    const { data, barang } = req.body; // ✅ ambil dari req.body
+    logger.info('Log API LEMPER kirim data permintaan '); // 🔹 Log API kirim data
+
+    if (!data || (typeof data !== 'object' && typeof barang !== 'object') || (Array.isArray(data) && Array.isArray(barang))) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    const columns = Object.keys(data).join(', ');
+    const placeholders = Object.keys(data).map(() => '?').join(', ');
+    const values = Object.values(data);
+
+    const queryPermintaan = `INSERT INTO tb_permintaan (${columns}) VALUES (${placeholders})`;
+
+    db3.query(queryPermintaan, values, (err, result) => {
+        if (err) {
+            logger.error("Error saat mengirim data:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
+        }
+
+        logger.info('Data berhasil disimpan di tb_permintaan');
+        const permintaanId = result.insertId;
+
+        const queryList = `INSERT INTO tb_list (id_permintaan, id_barang, jumlah, satuan, status, diinput_tgl) VALUES ?`;
+
+        // map array barang → array untuk bulk insert
+        const valuesList = barang.map(item => [
+            permintaanId,
+            item.id_barang,
+            item.jumlah,
+            item.satuan,
+            item.status,
+            item.diinput_tgl
+        ]);
+
+        db3.query(queryList, [valuesList], (err2, result2) => {
+            if (err2) {
+                logger.error("Error saat insert tb_list:", err2);
+                return res.json({ success: false, message: "Gagal simpan tb_list" });
+            }
+
+            logger.info('Semua data berhasil disimpan');
+            return res.json({ success: true, message: "Data berhasil disimpan" });
+        });
+    });
+});
+
+// ✅ API select PTSP
+app.get("/api_ptsp/ambil_data", (req, res) => {
+    const { column, from, where } = req.query; // ✅ ambil dari req.query
+    logger.info('Log API LEMPER ambil data'); // 🔹 Log API ambil data
+
+    const query = `SELECT ${column} FROM ${from} WHERE ${where}`;
+
+    db4.query(query, (err, result) => {
+        if (err) {
+            logger.error("Error saat mengambil data:", err);
+            console.error("Error saat mengambil data:", err);
+            return res.json({ success: false, message: "Terjadi kesalahan saat eksekusi query" });
+        }
+        logger.info('Data berhasil diambil'); // 🔹 Log jika data berhasil diambil
+        res.json({ success: true, message: "Query berhasil", data: result });
+    });
+});
+
 // ✅ API cek status
 app.get('/', (req, res) => {
     logger.info(`Server running in PORT: ${PORT}`);
-    res.end(`Status Koneksi DB :\n${db1status}\n${db2status}\n`);
+    res.end(`Status Koneksi DB :\n${db1status}\n${db2status}\n${db3status}\n${db4status}\n`);
 });
   
 app.listen(PORT, () => {

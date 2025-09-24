@@ -7,10 +7,10 @@ export let dbStatus = 'Belum terkoneksi';
 
 // 🔹 Gunakan createPool agar lebih stabil
 export const db = mysql.createPool({
-    host: process.env.DB_2_HOST,
-    user: process.env.DB_2_USER,
-    password: process.env.DB_2_PASS,
-    database: process.env.DB_2_DATABASE,
+    host: process.env.DB_3_HOST,
+    user: process.env.DB_3_USER,
+    password: process.env.DB_3_PASS,
+    database: process.env.DB_3_DATABASE,
     connectionLimit: 10 // ✅ Menjaga performa
 });
 
@@ -20,7 +20,7 @@ db.getConnection((err, connection) => {
         dbStatus = 'Gagal konek: ' + err.message;
         return;
     }
-    dbStatus = `Terkoneksi ke DB: ${process.env.DB_2_DATABASE}`;
+    dbStatus = `Terkoneksi ke DB: ${process.env.DB_3_DATABASE}`;
     console.log(dbStatus);
     connection.release(); // ✅ Lepaskan koneksi
 });
