@@ -1750,6 +1750,7 @@ app.post('/api_lemper/kirim_data_permintaan', (req, res) => {
     });
 });
 
+<<<<<<< Updated upstream
 app.delete('/api_lemper/hapus_data', (req, res) =>{
     const { table, id } = req.body; // ✅ ambil dari req.body
     logger.info('Log API LEMPER hapus data'); // 🔹 Log API hapus data
@@ -1769,6 +1770,70 @@ app.delete('/api_lemper/hapus_data', (req, res) =>{
         }
         logger.info('Data berhasil dihapus'); // 🔹 Log jika data berhasil dihapus
         res.json({ success: true, message: "Data berhasil dihapus", affectedRows: result.affectedRows });
+=======
+app.delete('/api_lemper/hapus_data', (req, res) => {
+    const { table, id } = req.body; // axios.delete({ data }) baru masuk ke sini
+    logger.info('Log API LEMPER hapus data');
+
+    // Validasi input
+    if (!table || !id) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    // Whitelist table biar aman dari SQL Injection
+    const allowedTables = ["tb_permintaan", "tb_list"];
+    if (!allowedTables.includes(table)) {
+        logger.error("Table tidak valid:", table);
+        return res.json({ success: false, message: "Table tidak valid" });
+    }
+
+    const query = `DELETE FROM ${table} WHERE id = ?`;
+
+    db3.query(query, [id], (err, result) => {
+        if (err) {
+            logger.error("Error saat menghapus data:", err);
+            return res.json({
+                success: false,
+                message: "Terjadi kesalahan saat eksekusi query",
+            });
+        }
+        logger.info('Data berhasil dihapus');
+        res.json({
+            success: true,
+            message: "Data berhasil dihapus",
+            affectedRows: result.affectedRows,
+        });
+    });
+});
+
+app.delete('/api_lemper/hapus_data_main', (req, res) => {
+    const { table, id } = req.body; // axios.delete({ data }) baru masuk ke sini
+    logger.info('Log API LEMPER hapus data');
+
+    // Validasi input
+    if (!table || !id) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    const query = `DELETE FROM ${table} WHERE id = ?`;
+
+    db3.query(query, [id], (err, result) => {
+        if (err) {
+            logger.error("Error saat menghapus data:", err);
+            return res.json({
+                success: false,
+                message: "Terjadi kesalahan saat eksekusi query",
+            });
+        }
+        logger.info('Data berhasil dihapus');
+        res.json({
+            success: true,
+            message: "Data berhasil dihapus",
+            affectedRows: result.affectedRows,
+        });
+>>>>>>> Stashed changes
     });
 });
 
