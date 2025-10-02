@@ -9,6 +9,10 @@ import { db as db4, dbStatus as db4status } from "./db4.js"
 import path from "path";
 import multer from 'multer';
 
+import ExcelJS from 'exceljs';
+import { format as formatDate } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
+
 import * as fs from 'fs';
 import { fileURLToPath } from "url";
 import cors from "cors";
@@ -1747,6 +1751,156 @@ app.post('/api_lemper/kirim_data_permintaan', (req, res) => {
             logger.info('Semua data berhasil disimpan');
             return res.json({ success: true, message: "Data berhasil disimpan" });
         });
+    });
+});
+
+app.delete('/api_lemper/hapus_data', (req, res) => {
+    const { table, id } = req.body; // axios.delete({ data }) baru masuk ke sini
+    logger.info('Log API LEMPER hapus data');
+
+    // Validasi input
+    if (!table || !id) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    // Whitelist table biar aman dari SQL Injection
+    const allowedTables = ["tb_permintaan", "tb_list"];
+    if (!allowedTables.includes(table)) {
+        logger.error("Table tidak valid:", table);
+        return res.json({ success: false, message: "Table tidak valid" });
+    }
+
+    const query = `DELETE FROM ${table} WHERE id = ?`;
+
+    db3.query(query, [id], (err, result) => {
+        if (err) {
+            logger.error("Error saat menghapus data:", err);
+            return res.json({
+                success: false,
+                message: "Terjadi kesalahan saat eksekusi query",
+            });
+        }
+        logger.info('Data berhasil dihapus');
+        res.json({
+            success: true,
+            message: "Data berhasil dihapus",
+            affectedRows: result.affectedRows,
+        });
+    });
+});
+
+app.delete('/api_lemper/hapus_data_main', (req, res) => {
+    const { table, id } = req.body; // axios.delete({ data }) baru masuk ke sini
+    logger.info('Log API LEMPER hapus data');
+
+    // Validasi input
+    if (!table || !id) {
+        logger.error("Data tidak valid");
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    const query = `DELETE FROM ${table} WHERE id = ?`;
+
+    db3.query(query, [id], (err, result) => {
+        if (err) {
+            logger.error("Error saat menghapus data:", err);
+            return res.json({
+                success: false,
+                message: "Terjadi kesalahan saat eksekusi query",
+            });
+        }
+        logger.info('Data berhasil dihapus');
+        res.json({
+            success: true,
+            message: "Data berhasil dihapus",
+            affectedRows: result.affectedRows,
+        });
+    });
+});
+
+app.get("/api_lemper/donlod_excel", (req, res) => {
+    const { id } = req.query; // pakai query param aja lebih aman GET
+    if (!id) {
+        return res.json({ success: false, message: "Data tidak valid" });
+    }
+
+    const queryPermintaan = `
+        SELECT 
+            p.nama_pegawai, 
+            p.diinput_tgl, 
+            u.unit
+        FROM 
+            tb_permintaan p
+        JOIN 
+            tb_unit u ON p.id_unit = u.id
+        WHERE 
+            p.id = ?
+    `;
+
+    const queryBarang = `SELECT tb_list.id, tb_barang.nama, tb_list.jumlah, tb_list.satuan FROM tb_list JOIN tb_barang ON tb_list.id_barang = tb_barang.id WHERE tb_list.id_permintaan = ?`;
+
+    // 🔹 query pertama untuk header
+    db3.query(queryPermintaan, [id], (err, permintaanResult) => {
+    if (err) {
+        console.error("Error query permintaan:", err);
+        return res.status(500).json({ success: false, message: "Gagal ambil data" });
+    }
+    if (permintaanResult.length === 0) {
+        return res.status(404).json({ success: false, message: "Data tidak ditemukan" });
+    }
+
+    const headerData = permintaanResult[0];
+
+    // 🔹 query kedua untuk list barang
+    db3.query(queryBarang, [id], async (err2, barangResult) => {
+        if (err2) {
+        console.error("Error query barang:", err2);
+        return res.status(500).json({ success: false, message: "Gagal ambil data barang" });
+        }
+
+        try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet("Permintaan");
+
+        // --- Header Info ---
+        worksheet.addRow([`Nama Pegawai: `,`${headerData.nama_pegawai}`]);
+        worksheet.addRow(['Unit Kerja: ',`${headerData.unit}`]);
+        worksheet.addRow(['Tanggal: ',`${formatDate(new Date(headerData.diinput_tgl), "d MMMM yyyy", { locale: localeId })}`]);
+
+        worksheet.addRow([]); // baris kosong
+
+        // --- Header Tabel Barang ---
+        worksheet.addRow(["No", "Barang", "Jumlah", "Satuan"]).font = { bold: true };
+
+        // --- Isi data barang ---
+        barangResult.forEach((row, index) => {
+            worksheet.addRow([index+1, row.nama, row.jumlah, row.satuan]);
+        });
+
+        // --- Styling opsional ---
+        worksheet.columns.forEach((col) => {
+            col.width = 20;
+        });
+        worksheet.getRow(5).font = { bold: true }; // header tabel tebal
+
+        // --- Kirim file ke client ---
+        res.setHeader(
+            "Content-Type",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename=permintaan_${id}.xlsx`
+        );
+
+        await workbook.xlsx.write(res);
+        res.end();
+        } catch (err3) {
+        console.error("Error buat excel:", err3);
+        res.status(500).json({ success: false, message: "Gagal export Excel" });
+        }
+    });
     });
 });
 
