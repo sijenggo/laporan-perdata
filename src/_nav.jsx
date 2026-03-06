@@ -49,24 +49,24 @@ export const _nav = [
     to: '/maues',
     icon: <CIcon icon={cilFolderOpen} customClassName="nav-icon" />,
   },
-  /*{
+  {
     component: CNavTitle,
     name: 'Laporan',
   },
-  {
+  /*{
     component: CNavItem,
     roles: [],
     name: 'Laporan Bulanan Perdata',
     to: '/lapbulperdata',
     icon: <CIcon icon={cilFolderOpen} customClassName="nav-icon" />,
-  },
+  },*/
   {
     component: CNavItem,
     roles: [],
     name: 'Monev Generator',
     to: '/monev',
     icon: <CIcon icon={cilFolderOpen} customClassName="nav-icon" />,
-  },*/
+  },
   /*{
     component: CNavItem,
     name: 'Logout',

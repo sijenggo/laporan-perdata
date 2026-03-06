@@ -1,14 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import DatePicker from 'react-datepicker'
-import { subMonths, format } from "date-fns";
-import { id, se, te } from 'date-fns/locale';
+import { format } from "date-fns";
+import { id, se } from 'date-fns/locale';
 import { formattedBulanSajaNumber, formattedTahunSajaNumber, formattedBulanSaja, formattedDate, formattedDateTime, formattedTime, formattedTimeMysql, formattedTgl, formattedTahunSaja, alur_permohonan, alur_gugatan, alur_gugatan_sederhana } from '../components/services';
-import RSelect from 'react-select';
 import CreateableSelect from 'react-select/creatable';
 import { createColumnHelper } from '@tanstack/react-table';
+import { PhotoProvider, PhotoView } from 'react-photo-view';
+import 'react-photo-view/dist/react-photo-view.css';
 
 import {
-  CButton,
+  CButton, 
   CCard,
   CCardBody,
   CRow,
@@ -47,8 +48,12 @@ import { useQuery, useQueries, useMutation, useQueryClient } from '@tanstack/rea
 import axios from '../components/axiosHooks';
 const SELECT_URL = 'api_laper/ambildata';
 const INSERT_URL = 'api_laper/kirimdata';
+const SUBMIT_URL = 'api_laper/submitmonev';
 const INSERT_PEGAWAI_URL = 'api_laper/kirimdatapegawai';
 const INSERT_PERBAIKAN_URL = 'api_laper/kirimdataperbaikan';
+const DOWNLOAD_URL = 'api_laper/downloadmonev';
+const HAPUS_URL = 'api_laper/hapusmonev';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 import Swal from 'sweetalert2';
 import { TableDinamis } from '../components/TableDinamis';
@@ -91,7 +96,7 @@ const MonevSchema = Yup.object().shape({
     tempat: Yup.string().required("Tempat wajib diisi"),
     peserta: Yup.string().required("Peserta wajib diisi"),
     pimpinan_monev: Yup.object().nullable().required("Pimpinan monev wajib diisi"),
-    notulis_monev: Yup.string().required("Notulis monev wajib diisi"),
+    notulis_monev: Yup.object().nullable().required("Notulis monev wajib diisi"),
     tanya_jawab: Yup.string().required("Tanya jawab wajib diisi"),
     nomor_surat: Yup.string().required("Nomor surat wajib diisi"),
     tgl_surat_monev: Yup.string().required("Tanggal surat wajib diisi"),
@@ -205,7 +210,7 @@ const Monev = () =>{
             ambilData({
                 column: '*',
                 from: 'tb_monev',
-                where: `judul = ${idjudulMonev.value} AND DATE_FORMAT(tgl_laporan_monev, '%Y-%m') = '${formattedTahunSajaNumber(date1)}-${formattedBulanSajaNumber(date1)}'`,
+                where: `judul = ${idjudulMonev.value} AND DATE_FORMAT(periode, '%Y-%m') = '${formattedTahunSajaNumber(date1)}-${formattedBulanSajaNumber(date1)}'`,
             }),
         enabled: !!idjudulMonev && !!date1,
     });
@@ -286,6 +291,14 @@ const Monev = () =>{
         }));
     }, [dataPegawai]);    
 
+    const selectNotulis = useMemo(() =>{
+        if (!dataPegawai || dataPegawai.length === 0) return [];
+        return dataPegawai.map(item => ({
+            value: item.id,
+            label: `${item.nama} | ${item.jabatan}`,
+        }));
+    }, [dataPegawai]); 
+
     const { data: dataPerbaikan = [] } = useQuery({
         queryKey: ['dataPerbaikan'],
         queryFn: () =>
@@ -322,19 +335,25 @@ const Monev = () =>{
         }));
     }, [dataPerbaikan]);
 
-    //console.log(selectPegawai)
+    const [dokMonev, setDokMonev] = useState([]);
     
     useEffect(() => {
         if (dataMonev && dataMonev.length > 0) {
             setDataEdit(dataMonev[0]);
             setDateMonev(new Date(dataMonev[0].tgl_laporan_monev));
             setDateNotulenMonev(new Date(dataMonev[0].tgl_notulen_monev));
+            formikTemuan?.setFieldValue('id', dataMonev[0].id);
             formikTemuan?.setFieldValue('tgl_notulen_monev', format(dataMonev[0].tgl_notulen_monev, 'yyyy-MM-dd HH:mm:ss'));
+            formikTemuan?.setFieldTouched('tgl_notulen_monev', true);
             formikTemuan?.setFieldValue('setiap', dataMonev[0].setiap);
             formikTemuan?.setFieldValue('tempat', dataMonev[0].tempat);
             formikTemuan?.setFieldValue('peserta', dataMonev[0].peserta);
             formikTemuan?.setFieldValue('pimpinan_monev', selectPegawai.find(opt => opt.value == dataMonev[0].pimpinan_monev) || null);
-            formikTemuan?.setFieldTouched('tgl_notulen_monev', true);
+            formikTemuan?.setFieldValue('notulis_monev', selectPegawai.find(opt => opt.value == dataMonev[0].notulis_monev) || null);
+            formikTemuan?.setFieldValue('tanya_jawab', dataMonev[0].tanya_jawab);
+            formikTemuan?.setFieldValue('nomor_surat', dataMonev[0].nomor_surat);
+            formikTemuan?.setFieldValue('kepada', dataMonev[0].kepada);
+            setDokMonev(dataMonev[0].dokumentasi ? dataMonev[0].dokumentasi.split(',') : []);          
 
             const temuanIds = dataMonev[0].temuan.split(",").map((id) => id.trim()).filter(Boolean);
             const pegawaiIds = dataMonev[0].absen.split(",").map((id) => id.trim()).filter(Boolean);
@@ -378,14 +397,16 @@ const Monev = () =>{
                 const sameContent = sameLength && prev.every((p, i) => p.id === filteredPerbaikan[i].id);
                 return sameContent ? prev : filteredPerbaikan;
             });
+            
+            //console.log(dataMonev[0].id);
         } else {
             setTemuanMonev((prev) => (prev.length > 0 ? [] : prev));
             setAbsensiMonev((prev) => (prev.length > 0 ? [] : prev));
             setPerbaikanMonev((prev) => (prev.length > 0 ? [] : prev));
+            setDataEdit(null);
+            formikTemuan?.resetForm();
         }
     }, [dataMonev, dataTemuanStatis, dataPegawaiStatis, dataPerbaikanStatis]);
-
-    //console.log(dataEdit);
 
     const tambahTemuanMutation = useMutation({
         mutationFn: async (temuan) => {
@@ -901,6 +922,186 @@ const Monev = () =>{
 		}),
     ];
 
+    const submitMutation = useMutation({
+        mutationFn: async (dataSubmit) => {
+            const res = await axios.post(SUBMIT_URL, dataSubmit);
+            return res.data;
+        },
+        onSuccess: (data) => {
+            if (data.success) {
+                formikTemuan?.setFieldValue('id', data.id);
+                Swal.fire({
+                    title: "Tambah Monev",
+                    icon: "success",
+                    text: "Ciye bikin Monev baru!",
+                    footer: data.message,
+                    showDenyButton: true,
+                    confirmButtonText: "Cetak Monevnya?!",
+                    denyButtonText: `Jangan Cetak!`
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        handleCetak(data.id);
+                    } else if (result.isDenied) {
+                        Swal.fire("Sans Monev Tersimpan!", "", "success");
+                    }
+                });
+            }
+        },
+        onError: (error) => {
+            Swal.fire({
+                title: "Gagal Tambah Monev",
+                text: error?.response?.data?.message || error.message || "Error woy error.",
+                icon: "error",
+            });
+        },
+    });
+
+    const handleSubmit = (values) =>{
+        const formData = new FormData();
+        const payload = {
+            id: values.id,
+            judul: selectedJudul ? selectedJudul.value : '',
+            tgl_laporan_monev: format(values.tgl_laporan_monev, 'yyyy-MM-dd HH:mm:ss'),
+            periode: format(date1, 'yyyy-MM-dd'),
+            setiap: values.setiap,
+            temuan: values.temuan ? values.temuan : 1,
+            tgl_notulen_monev: format(values.tgl_notulen_monev, 'yyyy-MM-dd HH:mm:ss'),
+            tempat: values.tempat,
+            peserta: values.peserta,
+            pimpinan_monev: values.pimpinan_monev,
+            notulis_monev: values.notulis_monev,
+            tanya_jawab: values.tanya_jawab,
+            nomor_surat: values.nomor_surat,
+            tgl_surat_monev: format(values.tgl_surat_monev, 'yyyy-MM-dd'),
+            kepada: values.kepada,
+            absen: values.absen,
+            tindak_lanjut: values.tindak_lanjut ? values.tindak_lanjut : 1,
+            diinput_tanggal: values.diinput_tanggal,
+        };
+
+        formData.append("data", JSON.stringify(payload));
+
+        if (values.dokumentasi && values.dokumentasi.length > 0) {
+            values.dokumentasi.forEach((item) => {
+                formData.append("dokumentasi", item.file);
+            });
+        }
+
+        formData.append('dokmonev', dokMonev);
+
+        if(dataEdit == null){
+            submitMutation.mutate(formData);
+            //console.log('insert');
+        }else{
+            //console.log('update');
+            Swal.fire({
+                title: "Menu Edit Monev",
+                text: "Untuk edit monev belum ada cuy sabar yaa..",
+                icon: "info",
+                footer: 'project sukarela'
+            });
+        }
+        //console.log(payload);
+    };
+
+    const handleCetak = async (id) =>{        
+        try {
+            const response = await axios.get(`${DOWNLOAD_URL}/${id}`, {
+                responseType: 'blob',
+            });
+        
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `monev_${Date.now()}.rtf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+      
+            window.URL.revokeObjectURL(url);
+        }catch (error) {
+            console.error("Terjadi kesalahan saat download surat:", error);
+        };
+        //console.log(id);
+    };
+
+    const mutationHapus = useMutation({
+        mutationFn: async (id) =>{
+            const res = await axios.delete(`${HAPUS_URL}/${id}`);
+            return res.data;
+        },
+        onSuccess: (data) => {
+            if(data.success){
+                Swal.fire({
+                    title: "Hapus Monev",
+                    icon: "success",
+                    text: "Monev berhasil dihapus!",
+                }).then(() => {
+                    document.location.reload();
+                });
+            }
+        },
+        onError: (error) => {
+            Swal.fire({
+                title: "Gagal Hapus Monev",
+                text: error?.response?.data?.message || error.message || "Error woy error.",
+                icon: "error",
+            });
+        },
+    })
+
+    const handleHapus = (id) => {
+        Swal.fire({
+            title: "Hapus Monev",
+            icon: "question",
+            text: "Hapus monev ini ?!",
+            showDenyButton: true,
+            confirmButtonText: "Hapus Monevnya?!",
+            confirmButtonColor: '#e55353',
+            denyButtonText: `Batal`,
+            denyButtonColor: 'grey'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                mutationHapus.mutate(id);
+            }
+        });
+    };
+
+    const DokumentasiShow = () =>{
+        return(
+            <div className="mx-3 mb-2 p-3 border">
+                <PhotoProvider maskOpacity={0.5}>
+                    <div className="d-flex flex-wrap gap-3">
+                    
+                    <PhotoView src={`${BASE_URL}DOK/dok_1770790994302_959007212.jpeg`}>
+                        <img
+                        src={`${BASE_URL}DOK/dok_1770790994302_959007212.jpeg`}
+                        style={{ width: 150 }}
+                        />
+                    </PhotoView>
+
+                    <PhotoView src={`${BASE_URL}DOK/dok_1770791128039_226799249.jpeg`}>
+                        <img
+                        src={`${BASE_URL}DOK/dok_1770791128039_226799249.jpeg`}
+                        style={{ width: 150 }}
+                        />
+                    </PhotoView>
+
+                    <PhotoView src={`${BASE_URL}DOK/dok_1770791185442_751286584.jpeg`}>
+                        <img
+                        src={`${BASE_URL}DOK/dok_1770791185442_751286584.jpeg`}
+                        style={{ width: 150 }}
+                        />
+                    </PhotoView>
+
+                    </div>
+                </PhotoProvider>
+            </div>
+        );
+    };
+
+    //console.log(dokMonev);
+
     return(
         <>
             <CCard className="mb-4">
@@ -950,7 +1151,8 @@ const Monev = () =>{
                                     <div className={`border-start border-start-4 border-start-primary py-1 px-3`}>
                                         <Formik
                                             initialValues={{
-                                                judul: idjudulMonev ? idjudulMonev.value : '',
+                                                id: dataMonev[0]?.id || 'insert',
+                                                judul: selectedJudul ? selectedJudul.value : '',
                                                 tgl_laporan_monev: dateMonev ? dateMonev : '',
                                                 bulan: dateMonev ? format(dateMonev, "MMMM") : '',
                                                 tahun: dateMonev ? format(dateMonev, "yyyy") : '',
@@ -963,16 +1165,16 @@ const Monev = () =>{
                                                 notulis_monev: '',
                                                 tanya_jawab: '',
                                                 nomor_surat: '',
-                                                tgl_surat_monev: '',
+                                                tgl_surat_monev: dateUndanganMonev ? dateUndanganMonev : '',
                                                 kepada: '',
-                                                dokumentasi: null,
+                                                dokumentasi: null,                                                
                                                 absen: '',
                                                 tindak_lanjut: '',
                                                 diinput_tanggal: format(new Date(), "yyyy-MM-dd HH:mm:ss"),
                                             }}
                                             validationSchema={MonevSchema}
                                             onSubmit={(values, { resetForm }) => {
-                                                console.log(values);
+                                                handleSubmit(values);
                                             }}
                                         >
                                             {formik => (
@@ -999,6 +1201,7 @@ const Monev = () =>{
                                                                             formik.setFieldValue('judul', data ? data.value : '');
                                                                             formik.setFieldTouched('judul', true);
                                                                             setFormikTemuan(formik);
+                                                                            setDokMonev([]);
                                                                         }}
                                                                         onBlur={() => formik.setFieldTouched('judul', true)}
                                                                         onCreateOption={handleCreateSelect}
@@ -1037,13 +1240,11 @@ const Monev = () =>{
                                                                                 formik.setFieldValue('tgl_laporan_monev', format(date, "yyyy-MM-dd HH:mm:ss"));
                                                                                 formik.setFieldValue('bulan', format(date, "MMMM"));
                                                                                 formik.setFieldValue('tahun', format(date, "yyyy"));
-                                                                                formik.setFieldValue('tgl_notulen_monev', format(date, "yyyy-MM-dd HH:mm:ss"));
                                                                             }}
                                                                             onBlur={() => {
                                                                                 formik.setFieldTouched('tgl_laporan_monev', true);
                                                                                 formik.setFieldTouched('bulan', true);
                                                                                 formik.setFieldTouched('tahun', true);
-                                                                                formik.setFieldTouched('tgl_notulen_monev', true);
                                                                             }}                                                                                                     
                                                                             locale={id}
                                                                             showTimeSelect
@@ -1057,7 +1258,7 @@ const Monev = () =>{
                                                                     <CFormLabel className="col-form-label text-truncate small fs-6">Bulan Monev</CFormLabel>
                                                                     <div className='mb-2 ps-3'>
                                                                         <DatePicker 
-                                                                            selected={dateMonev}
+                                                                            selected={date1}
                                                                             dateFormat="MMMM"
                                                                             className='form-control w-50'                                                                                                        
                                                                             locale={id}
@@ -1118,9 +1319,15 @@ const Monev = () =>{
                                                                         <DatePicker 
                                                                             selected={dateNotulenMonev}
                                                                             dateFormat="EEEE, d MMMM yyyy"
-                                                                            className='form-control w-120'                                                                                                                        
+                                                                            className='form-control w-120'                                                                             
+                                                                            onChange={(date) => {
+                                                                                setDateNotulenMonev(date);
+                                                                                formik.setFieldValue('tgl_notulen_monev', format(date, "yyyy-MM-dd HH:mm:ss"));
+                                                                            }}
+                                                                            onBlur={() => {
+                                                                                formik.setFieldTouched('tgl_notulen_monev', true);
+                                                                            }}                                                                                                                         
                                                                             locale={id}
-                                                                            disabled
                                                                         />
                                                                         {formik.errors.tgl_notulen_monev && formik.touched.tgl_notulen_monev && (
                                                                             <div className='mt-2' style={{ color: "red", fontSize: "13px" }}>
@@ -1178,8 +1385,9 @@ const Monev = () =>{
                                                                             options={selectPegawai}
                                                                             onCreateOption={() => handleCreatePegawai()}
                                                                             isClearable
+                                                                            value={formik.values.notulis_monev}
                                                                             placeholder="Pilih atau ketik notulis monev..."
-                                                                            onChange={(data) => formik.setFieldValue('notulis_monev', data ? data.value : '')}
+                                                                            onChange={(data) => formik.setFieldValue('notulis_monev', data)}
                                                                             onBlur={() => formik.setFieldTouched('notulis_monev', true)}                                                                            
                                                                         />
                                                                         {formik.errors.notulis_monev && formik.touched.notulis_monev && (
@@ -1191,7 +1399,12 @@ const Monev = () =>{
                                                                     <CFormLabel className="col-form-label text-truncate small fs-6">Tanya Jawab (di notulen Monev)</CFormLabel>
                                                                     <div className='mb-2 ps-3'>
                                                                         <CFormTextarea
-                                                                            placeholder='Tanya Jawab Rapat Monev'
+                                                                            placeholder={
+                                                                                "Apakah ada kendala saat ......?\n" +
+                                                                                "Jawab: ...\n\n" +
+                                                                                "Apakah ada hambatan saat ......?\n" +
+                                                                                "Jawab: ..."
+                                                                            }
                                                                             autoComplete='tanya_jawab'
                                                                             rows={6}
                                                                             name='tanya_jawab'
@@ -1238,7 +1451,16 @@ const Monev = () =>{
                                                                     <CFormLabel className="col-form-label text-truncate small fs-6">Tujuan Surat Undangan Monev</CFormLabel>
                                                                     <div className='mb-2 ps-3'>
                                                                         <CFormTextarea
-                                                                            placeholder='Tujuan Surat Undangan Monev'
+                                                                            placeholder={
+                                                                                "1. Wakil Ketua;\n" +
+                                                                                "2. Bapak/Ibu Hakim;\n" + 
+                                                                                "3. Panitera;\n" +
+                                                                                "4. Sekretaris;\n" +
+                                                                                "5. Para Panitera Muda;\n" +
+                                                                                "6. Para Kepala Sub. Bagian\n" +
+                                                                                "7. Pejabat Fungsional, Pelaksana, dan PPNPN\n" +
+                                                                                "Pengadilan Negeri Banyumas"
+                                                                            }
                                                                             autoComplete='kepada'
                                                                             rows={4}
                                                                             name='kepada'
@@ -1250,6 +1472,9 @@ const Monev = () =>{
                                                                         />
                                                                     </div>
                                                                     <CFormLabel className="col-form-label text-truncate small fs-6">Dokumentasi Monev</CFormLabel>
+                                                                    {dokMonev && dokMonev.length > 0 ? (
+                                                                        <DokumentasiShow />
+                                                                    ) : null }                                                                    
                                                                     <div className='mb-2 ps-3'>
                                                                         <ReactImageUploading
                                                                             multiple={true}
@@ -1325,9 +1550,19 @@ const Monev = () =>{
                                                                         <TableDinamis data={perbaikanMonev} columns={columnsPerbaikan} RenderSelect={<SelectPerbaikan formik={formik} />} KetKosong={'Tidak ada tindak lanjut'}/>
                                                                     </div>
                                                                     <div className='mt-4 mb-2 ps-3 d-flex justify-content-end'>
-                                                                        <CButton onClick={() => formik.submitForm()} color='primary'>
-                                                                            <CIcon icon={icons.cilFile} className="me-2" /> Generate Monev
-                                                                        </CButton>
+                                                                        {formik.values.id !== 'insert' ? (                                      
+                                                                            <>
+                                                                                <CButton onClick={() => handleHapus(formik.values.id)} color='danger' className="me-2 text-white">
+                                                                                    <CIcon icon={icons.cilTrash} className="me-2" /> Hapus File Monev
+                                                                                </CButton>
+                                                                                <CButton onClick={() => handleCetak(formik.values.id)} color='primary'>
+                                                                                    <CIcon icon={icons.cilFile} className="me-2" /> Generate File Monev
+                                                                                </CButton>
+                                                                            </>
+                                                                        ) : null}
+                                                                        <CButton className='ms-2 text-white' onClick={() => formik.submitForm()} color='success'>
+                                                                            <CIcon icon={icons.cilSave} className="me-2" /> Simpan Monev
+                                                                        </CButton>                                                                        
                                                                     </div>
                                                                 </>
                                                             )}
@@ -1344,7 +1579,9 @@ const Monev = () =>{
                 </CCardBody>
                 <CCardFooter>
                     <CRow>
-                        asdasd
+                        <CCol className="text-end">
+                            <small className="text-muted">Copyright &copy; 2025 - Monev Generator</small>
+                        </CCol>
                     </CRow>
                 </CCardFooter>
             </CCard>

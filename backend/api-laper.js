@@ -11,9 +11,10 @@ import multer from 'multer';
 
 import ExcelJS from 'exceljs';
 import { format as formatDate } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { id, id as localeId } from 'date-fns/locale';
 
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises'; // untuk async/await
 import { fileURLToPath } from "url";
 import cors from "cors";
 
@@ -52,6 +53,9 @@ const logger = createLogger({
         }),
     ]
 });
+
+// buat akses DOK
+app.use("/DOK", express.static(path.join(__dirname, "DOK")));
 
 // ✅ API select
 app.get("/api/ambil_data", (req, res) => {
@@ -1659,6 +1663,723 @@ app.post('/api_laper/kirimdataperbaikan', uploadTDL.single('eviden'), (req, res)
                 },
             });
         });
+    });
+});
+
+const storageDOK = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = 'DOK'; // folder fix
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        cb(null, dir);
+    },
+    filename: (req, file, cb) =>{
+        const ext = path.extname(file.originalname);
+        const unique = Date.now().toString() + '_' + Math.round(Math.random() * 1E9).toString();
+        cb(null, `dok_${unique}${ext}`);
+    }
+});
+
+const uploadDOK = multer({
+    storage: storageDOK,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // max 5MB per file
+    }
+});
+
+app.post("/api_laper/submitmonev", uploadDOK.array('dokumentasi', 10), (req, res) => {
+    logger.info('Log API Laper submit monev baru');
+
+    try {
+        const parsedData = JSON.parse(req.body.data);
+        let dokIds = [];
+
+        const lanjutInsertMonev = () => {
+            const dokumentasiString = dokIds.join(",");
+            const insertMonevQuery = `
+                INSERT INTO tb_monev (
+                    judul,
+                    periode,
+                    setiap,
+                    temuan,
+                    tgl_laporan_monev,
+                    tgl_notulen_monev,
+                    tempat,
+                    peserta,
+                    pimpinan_monev,
+                    notulis_monev,
+                    tanya_jawab,
+                    nomor_surat,
+                    tgl_surat_monev,
+                    kepada,
+                    dokumentasi,
+                    absen,
+                    tindak_lanjut,
+                    diinput_tanggal
+                )
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            `;
+
+            db2.query(insertMonevQuery, [
+                parsedData.judul,
+                parsedData.periode,
+                parsedData.setiap,
+                parsedData.temuan,
+                parsedData.tgl_laporan_monev,
+                parsedData.tgl_notulen_monev,
+                parsedData.tempat,
+                parsedData.peserta,
+                parsedData.pimpinan_monev['value'],
+                parsedData.notulis_monev['value'],
+                parsedData.tanya_jawab,
+                parsedData.nomor_surat,
+                parsedData.tgl_surat_monev,
+                parsedData.kepada,
+                dokumentasiString,
+                parsedData.absen,
+                parsedData.tindak_lanjut,
+                parsedData.diinput_tanggal
+            ], (err, result) => {
+
+                if (err) {
+                    logger.error("Error insert tb_monev:", err);
+                    return res.status(500).json({ error: "Gagal insert tb_monev" });
+                }
+
+                logger.info('Data monev & dokumentasi berhasil disimpan');
+
+                return res.json({
+                    success: true,
+                    message: "Data monev & dokumentasi berhasil disimpan",
+                    id: result.insertId
+                });
+            });
+        };
+
+        const lanjutUpdateMonev = () => {
+            const dokmonev = parsedData.dokmonev || [];
+            const allDokIds = [...dokmonev, ...dokIds];
+            const dokumentasiString = allDokIds.join(",");
+            const updateMonevQuery = `
+                UPDATE tb_monev SET
+                    judul = ?,
+                    periode = ?,
+                    setiap = ?,
+                    temuan = ?,
+                    tgl_laporan_monev = ?,
+                    tgl_notulen_monev = ?,
+                    tempat = ?,
+                    peserta = ?,
+                    pimpinan_monev = ?,
+                    notulis_monev = ?,
+                    tanya_jawab = ?,
+                    nomor_surat = ?,
+                    tgl_surat_monev = ?,
+                    kepada = ?,
+                    dokumentasi = ?,
+                    absen = ?,
+                    tindak_lanjut = ?,
+                    diinput_tanggal = ?
+                WHERE id = ?
+            `;
+
+            db2.query(updateMonevQuery, [
+                parsedData.judul,
+                parsedData.periode,
+                parsedData.setiap,
+                parsedData.temuan,
+                parsedData.tgl_laporan_monev,
+                parsedData.tgl_notulen_monev,
+                parsedData.tempat,
+                parsedData.peserta,
+                parsedData.pimpinan_monev['value'],
+                parsedData.notulis_monev['value'],
+                parsedData.tanya_jawab,
+                parsedData.nomor_surat,
+                parsedData.tgl_surat_monev,
+                parsedData.kepada,
+                dokumentasiString,
+                parsedData.absen,
+                parsedData.tindak_lanjut,
+                parsedData.diinput_tanggal,
+                parsedData.id
+            ], (err) => {
+
+                if (err) {
+                    logger.error("Error update tb_monev:", err);
+                    return res.status(500).json({ error: "Gagal update tb_monev" });
+                }
+
+                logger.info('Data monev & dokumentasi berhasil diupdate');
+
+                return res.json({
+                    success: true,
+                    message: "Data monev & dokumentasi berhasil diupdate"
+                });
+            });
+        };
+
+        // PROSES INSERT ATO UPDATE
+        const prosesMonev = () => {
+            if(parsedData.id == 'insert'){
+                logger.info('Proses insert monev baru');
+                lanjutInsertMonev();
+            }else{
+                logger.info('Proses update monev lama');
+                lanjutUpdateMonev();
+            }
+        }
+
+        // ==========================
+        // JIKA ADA FILE
+        // ==========================
+        if (req.files && req.files.length > 0) {
+            let total = req.files.length;
+            let selesai = 0;
+            req.files.forEach((file) => {
+                const insertDokQuery = `
+                    INSERT INTO tb_dok (ket, dok)
+                    VALUES (?, ?)
+                `;
+                db2.query(insertDokQuery, ["", file.filename], (err, result) => {
+                    if (err) {
+                        logger.error("Error insert tb_dok:", err);
+                        return res.status(500).json({ error: "Gagal insert tb_dok" });
+                    }
+
+                    dokIds.push(result.insertId);
+                    selesai++;
+
+                    // Kalau semua file sudah selesai insert
+                    if (selesai === total) {
+                        prosesMonev();
+                    }
+                });
+            });
+        } else {
+            // ==========================
+            // JIKA TIDAK ADA FILE
+            // ==========================
+            prosesMonev();
+        }
+
+    } catch (error) {
+        console.error(error);
+        logger.error("Terjadi kesalahan server!:", error);
+        return res.status(500).json({ error: "Terjadi kesalahan server!" });
+    }
+});
+
+// ✅ API Utility
+const getMonevById = (id) => {
+    return new Promise((resolve, reject) => {
+        const sql = "SELECT tb_monev.*, tb_judul.judul AS nama_judul FROM tb_monev JOIN tb_judul ON tb_monev.judul = tb_judul.id WHERE tb_monev.id = ?";
+        db2.query(sql, [id], (err, result) => {
+            if (err) {
+                logger.error("Error saat mengambil monev:", err);
+                return reject(err);
+            }
+            if (result.length === 0) {
+                logger.error("Data monev tidak ditemukan untuk ID:", id);
+                return reject(new Error("Data tidak ditemukan"));
+            }
+            resolve(result[0]);
+        });
+    });
+};
+
+const getTemuanByIds = (ids) => {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT temuan, kendala, rekomendasi, ket
+            FROM tb_temuan
+            WHERE id IN (?)
+        `;
+        db2.query(sql, [ids], (err, result) => {
+            if (err) {
+                logger.error("Error saat mengambil temuan:", err);
+                return reject(err);
+            }
+            resolve(result);
+        });
+    });
+};
+
+const getPegawaiById = (ids) => {
+    return new Promise((resolve, reject) => {
+        const sql = "SELECT nama,jabatan,ttd FROM tb_ttd WHERE id IN (?)";
+        db2.query(sql, [ids], (err, result) => {
+            if (err) {
+                logger.error("Error saat mengambil pegawai:", err);
+                return reject(err);            
+            }
+            resolve(result);
+        });
+    });
+};
+
+const findImagePath = (baseName) => {
+    const folderPath = path.join(__dirname, "DOK");
+
+    const extensions = [".jpg", ".jpeg", ".png"];
+
+    for (const ext of extensions) {
+        const fullPath = path.join(folderPath, baseName);
+        if (fs.existsSync(fullPath)) {
+            return { path: fullPath, ext };
+        }
+    }
+
+    return null;
+};
+
+const imageToHexRTF = (baseName) => {
+    const file = findImagePath(baseName);
+
+    if (!file) {
+        logger.error("File tidak ditemukan:", baseName);
+        return null;
+    }
+
+    const imageBuffer = fs.readFileSync(file.path);
+    const hex = imageBuffer.toString("hex");
+
+    return {
+        hex,
+        type: file.ext === ".png" ? "pngblip" : "jpegblip"
+    };
+};
+
+const findImagePathTTD = (baseName) => {
+    const folderPath = path.join(__dirname, "TTD");
+
+    const extensions = [".png"];
+
+    for (const ext of extensions) {
+        const fullPath = path.join(folderPath, baseName);
+        if (fs.existsSync(fullPath)) {
+            return { path: fullPath, ext };
+        }
+    }
+
+    return null;
+};
+
+const imageToHexRTFTTD = (baseName) => {
+    const file = findImagePathTTD(baseName);
+
+    if (!file) {
+        logger.error("File tidak ditemukan:", baseName);
+        return null;
+    }
+
+    const imageBuffer = fs.readFileSync(file.path);
+    const hex = imageBuffer.toString("hex");
+
+    return {
+        hex,
+        type: file.ext === ".png" ? "pngblip" : "jpegblip"
+    };
+};
+
+const getDoksById = (ids) =>{
+    return new Promise((resolve, reject) => {
+        const sql = "SELECT ket, dok FROM tb_dok WHERE id IN (?)";
+        db2.query(sql, [ids], (err, result) => {
+            if (err) {
+                logger.error("Error saat mengambil dok:", err); 
+                return reject(err);            
+            }
+            resolve(result);
+        });
+    });
+};
+
+const getTindakLanjutByIds = (ids) => {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT 
+                tb_temuan.temuan,
+                tb_perbaikan.perbaikan,
+                tb_perbaikan.eviden
+            FROM tb_perbaikan
+            JOIN tb_temuan ON tb_perbaikan.id_temuan = tb_temuan.id
+            WHERE tb_perbaikan.id IN (?)
+        `;
+        db2.query(sql, [ids], (err, result) => {
+            if (err) {
+                logger.error("Error saat mengambil tindak lanjut:", err);
+                return reject(err);
+            }
+            resolve(result);
+        });
+    });
+};
+
+
+// API download monev
+app.get("/api_laper/downloadmonev/:id", async (req, res) => {    
+    const id = req.params.id;
+    logger.info(`Log API Laper download monev - ID: ${id}`);
+
+    const templatePath = path.join(__dirname, "template/tmp_monev.rtf");
+    //console.log("Template path:", templatePath);
+    const tempOutputPath = path.join(__dirname, 'temp/output_' + Date.now() + '.rtf');
+
+    const escapeRTF = (text) => {
+        if (!text) return "";
+        return text
+            .replace(/\\/g, "\\\\")
+            .replace(/{/g, "\\{")
+            .replace(/}/g, "\\}");
+    };
+    
+let tabelTemuan = '';
+let tabelDaftarHadir = '';
+let tabelTindakLanjut = '';
+let pimpinanTTD = '';
+let notulisTTD = '';
+
+    const generateDokumentasiTable = (dokList) => {
+        let rtf = "";
+    
+        for (let i = 0; i < dokList.length; i += 2) {
+    
+            const left = dokList[i];
+            const right = dokList[i + 1];
+    
+            rtf += `
+    \\trowd
+    \\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx4500
+    \\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9000
+    `;
+    
+            // ===== LEFT IMAGE =====
+            if (left) {
+                const imgData = imageToHexRTF(left.dok);
+                //console.log(imgData)
+    
+                if (imgData) {
+                    rtf += `
+    {\\pict\\${imgData.type}\\picwgoal3000\\pichgoal2000
+    ${imgData.hex}
+    }
+    \\cell
+    `;
+                } else {
+                    rtf += `\\cell`;
+                }
+            } else {
+                rtf += `\\cell`;
+            }
+    
+            // ===== RIGHT IMAGE =====
+            if (right) {
+                const imgData = imageToHexRTF(right.dok);
+    
+                if (imgData) {
+                    rtf += `
+    {\\pict\\${imgData.type}\\picwgoal3000\\pichgoal2000
+    ${imgData.hex}
+    }
+    \\cell
+    `;
+                } else {
+                    rtf += `\\cell`;
+                }
+            } else {
+                rtf += `\\cell`;
+            }
+    
+            // 🔥 INI YANG KAMU LUPA
+            rtf += `\\row`;
+        }
+    
+        // 🔥 RETURN HARUS DI LUAR LOOP
+        return rtf;
+    };   
+
+    try {
+        // Baca file sebagai buffer, lalu ubah ke string
+        const buffer = await fsPromises.readFile(templatePath);
+        const content = buffer.toString('utf8');
+
+        const monev = await getMonevById(id);
+
+        const idArray = monev.temuan
+            ? monev.temuan.split(',').map(i => parseInt(i.trim()))
+            : [];
+
+        const temuanList = await getTemuanByIds(idArray);
+
+/* ===== HEADER ===== */
+tabelTemuan += `
+\\trowd
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx1000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9000
+\\b No\\b0\\cell
+\\b Temuan\\b0\\cell
+\\b Kendala\\b0\\cell
+\\b Rekomendasi\\b0\\cell
+\\b Ket\\b0\\cell
+\\row
+`;
+
+/* ===== DATA ===== */
+temuanList.forEach((item, index) => {
+tabelTemuan += `
+\\trowd
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx1000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx3000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9000
+${index + 1}\\cell
+${escapeRTF(item.temuan)}\\cell
+${escapeRTF(item.kendala)}\\cell
+${escapeRTF(item.rekomendasi)}\\cell
+${escapeRTF(item.ket)}\\cell
+\\row
+`;
+});
+
+        const pimpinan_monev = await getPegawaiById(monev.pimpinan_monev);
+        const notulis_monev = await getPegawaiById(monev.notulis_monev);
+
+        const idDokArray = monev.dokumentasi
+        ? monev.dokumentasi.split(',').map(i => parseInt(i.trim()))
+        : [];
+
+        const dokList = await getDoksById(idDokArray);
+        const dokTable = generateDokumentasiTable(dokList);
+        //console.log(dokTable);
+
+        const idDaftarHadir = monev.absen
+        ? monev.absen.split(',').map(i => parseInt(i.trim()))
+        : [];
+
+        const daftar_hadir = await getPegawaiById(idDaftarHadir);
+
+/* ===== HEADER ===== */
+tabelDaftarHadir += `
+\\trowd
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx1000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9000
+\\b No\\b0\\cell
+\\b Nama\\b0\\cell
+\\b Jabatan\\b0\\cell
+\\b TTD\\b0\\cell
+\\row
+`;
+
+/* ===== DATA ===== */
+daftar_hadir.forEach((item, index) => {
+let TTD = "";
+const imgData = imageToHexRTFTTD(item.ttd);
+
+if (imgData) {
+TTD = `
+\\qc
+{\\pict\\${imgData.type}\\picwgoal900\\pichgoal800
+${imgData.hex}
+}
+`;
+} else {
+TTD = escapeRTF(item.ttd || "");
+}
+
+tabelDaftarHadir += `
+\\trowd
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx1000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9000
+${index + 1}\\cell
+${escapeRTF(item.nama)}\\cell
+${escapeRTF(item.jabatan)}\\cell
+${TTD}\\cell
+\\row
+`;
+});
+        
+        const idTLArray = monev.tindak_lanjut
+        ? monev.tindak_lanjut.split(',').map(i => parseInt(i.trim()))
+        : [];
+
+        const tindak_lanjutLIST = await getTindakLanjutByIds(idTLArray);
+
+/* ===== HEADER ===== */
+tabelTindakLanjut += `
+\\trowd
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx1000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9000
+\\b No\\b0\\cell
+\\b Temuan\\b0\\cell
+\\b Hasil Perbaikan\\b0\\cell
+\\b Eviden\\b0\\cell
+\\row
+`;
+
+/* ===== DATA ===== */
+tindak_lanjutLIST.forEach((item, index) => {
+let evidenRTF = "";
+const imgData = imageToHexRTF(item.eviden);
+
+if (imgData) {
+evidenRTF = `
+\\qc
+{\\pict\\${imgData.type}\\picwgoal3000\\pichgoal2000
+${imgData.hex}
+}
+`;
+} else {
+evidenRTF = escapeRTF(item.eviden || "");
+}
+
+tabelTindakLanjut += `
+\\trowd
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx1000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx5000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx7000
+\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10\\cellx9000
+${index + 1}\\cell
+${escapeRTF(item.temuan)}\\cell
+${escapeRTF(item.perbaikan)}\\cell
+${evidenRTF}\\cell
+\\row
+`;
+});
+
+        // Replace placeholder
+        const parseMySQLDate = (val) => {
+            if (!val) return null;
+        
+            // Kalau sudah Date object
+            if (val instanceof Date) return val;
+        
+            // Kalau string
+            if (typeof val === "string") {
+                return new Date(val.replace(" ", "T"));
+            }
+        
+            return null;
+        };
+        
+        const periode = parseMySQLDate(monev.periode);
+        const tglMonev = parseMySQLDate(monev.tgl_laporan_monev);
+        const tglSurat = parseMySQLDate(monev.tgl_surat_monev);
+        
+        const hexpimpinanTTD = pimpinan_monev?.[0]?.ttd ? imageToHexRTFTTD(pimpinan_monev[0].ttd) : null;
+        const hexnotulisTTD = notulis_monev?.[0]?.ttd ? imageToHexRTFTTD(notulis_monev[0].ttd) : null;
+
+pimpinanTTD = `
+\\qc
+{\\pict\\${hexpimpinanTTD.type}\\picwgoal2000\\pichgoal2000
+${hexpimpinanTTD.hex}
+}
+`;
+
+notulisTTD = `
+\\qc
+{\\pict\\${hexnotulisTTD.type}\\picwgoal2000\\pichgoal2000
+${hexnotulisTTD.hex}
+}
+`;
+
+        const rtfLineBreak = (text) => {
+            if (!text) return "";
+            return escapeRTF(text).replace(/\r?\n/g, "\\line ");
+        };
+        const boldRTF = (text) => `\\b ${text} \\b0`;
+        const upper = (text) => text ? text.toUpperCase() : "";
+
+        const getPrevMonth = (mysqlDate) => {
+            mysqlDate.setMonth(mysqlDate.getMonth() - 1); // mundur 1 bulan
+            return mysqlDate;
+        };
+
+        const prevperiode = periode ? getPrevMonth(new Date(periode)) : null;
+        //console.log("Prev Periode:", prevperiode);
+
+        const replaced = content
+            .replace(/#JUDUL#/g, upper(monev.nama_judul) || "")
+            .replace(/#BULAN#/g, periode ? upper(formatDate(periode, 'MMMM', { locale: localeId })) : "")
+            .replace(/#TAHUN#/g, periode ? formatDate(periode, 'yyyy', { locale: localeId }) : "")
+            .replace(/#SETIAP#/g, monev.setiap || "")
+            .replace(/#TEMUAN#/g, tabelTemuan || "")
+            .replace(/#HARIMONEV#\s*/g, tglMonev ? formatDate(tglMonev, 'eeee', { locale: localeId }) : "")
+            .replace(/#HARI#\s*/g, tglMonev ? formatDate(tglMonev, 'eeee', { locale: localeId }) : "")
+            .replace(/#TGLMONEV#/g, tglMonev ? formatDate(tglMonev, 'dd MMMM yyyy', { locale: localeId }) : "")
+            .replace(/#JAMMONEV#\s*/g, tglMonev ? formatDate(tglMonev, 'HH:mm', { locale: localeId }) : "")
+            .replace(/#JAM#\s*/g, tglMonev ? formatDate(tglMonev, 'HH:mm', { locale: localeId }) : "")
+            .replace(/#TTDPIMPINAN#/g, hexpimpinanTTD ? pimpinanTTD : "")
+            .replace(/#PIMPINANMONEV#/g, pimpinan_monev?.[0]?.nama || "")
+            .replace(/#JABATANPIMPINANMONEV#/g, pimpinan_monev?.[0]?.jabatan || "")
+            .replace(/#TTDNOTULIS#/g, hexnotulisTTD ? notulisTTD : "")
+            .replace(/#NOTULISMONEV#/g, notulis_monev?.[0]?.nama || "")
+            .replace(/#JABATANNOTULISMONEV#/g, notulis_monev?.[0]?.jabatan || "")
+            .replace(/#TEMPATMONEV#/g, monev.tempat || "")
+            .replace(/#PESERTAMONEV#/g, rtfLineBreak(monev.peserta))
+            .replace(/#TANYAJAWABMONEV#/g, rtfLineBreak(monev.tanya_jawab))
+            .replace(/#NOMORUNDANGANMONEV#/g, monev.nomor_surat || "")
+            .replace(/#TGLUNDANGANMONEV#/g, tglSurat ? formatDate(tglSurat, 'dd MMMM yyyy', { locale: localeId }) : "")
+            .replace(/#TUJUANSURATMONEV#/g, rtfLineBreak(monev.kepada))
+            .replace(/#DOKUMENTASI#/g, dokTable || "")
+            .replace(/#DAFTARHADIR#/g, tabelDaftarHadir || "")
+            .replace(/#TINDAKLANJUT#/g, tabelTindakLanjut || "")
+            .replace(/#BULANTTL#/g, prevperiode ? upper(formatDate(prevperiode, 'MMMM', { locale: localeId })) : "")
+            .replace(/#TAHUNTTL#/g, prevperiode ? formatDate(prevperiode, 'yyyy', { locale: localeId }) : "")
+            ;
+
+        // Tulis file hasil replace ke folder sementara
+        await fsPromises.writeFile(tempOutputPath, replaced, 'utf8');
+
+        // Kirim file hasil ke client
+        res.download(tempOutputPath, `monev_${Date.now()}.rtf`, async (err) => {
+            if (err) {
+                logger.error('Gagal mengunduh file:', err);
+                console.error('Gagal mengunduh file:', err);
+            };
+    
+            // Hapus file sementara setelah download selesai
+            try {
+                await fsPromises.unlink(tempOutputPath);
+                logger.info('File sementara berhasil dihapus:', tempOutputPath);
+            } catch (unlinkErr) {
+                logger.error('Gagal hapus file sementara:', unlinkErr);
+                console.error('Gagal hapus file sementara:', unlinkErr);
+            };
+            logger.info('File berhasil diunduh:', tempOutputPath);
+        });
+
+    } catch (error) {
+        console.error('Terjadi error:', error);
+        logger.error('Terjadi error:', error);
+        res.status(500).json({ message: 'Gagal memproses file' });
+    };
+    
+});
+
+app.delete("/api_laper/hapusmonev/:id", (req, res) => {
+    const id = req.params.id;
+    logger.info(`Log API Laper hapus monev - ID: ${id}`);
+
+    const deleteQuery = "DELETE FROM tb_monev WHERE id = ?";
+    db2.query(deleteQuery, [id], (err, result) => {
+        if (err) {
+            logger.error("Error saat menghapus monev:", err);
+            return res.status(500).json({ success: false, message: "Gagal menghapus monev" });
+        }
+        logger.info('Monev berhasil dihapus'); // 🔹 Log jika monev berhasil dihapus
+        res.json({ success: true, message: "Monev berhasil dihapus" });
     });
 });
 
