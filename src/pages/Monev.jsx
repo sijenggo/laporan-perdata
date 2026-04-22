@@ -409,38 +409,36 @@ const Monev = () =>{
     }, [dataMonev, dataTemuanStatis, dataPegawaiStatis, dataPerbaikanStatis]);
 
     const tambahTemuanMutation = useMutation({
-        mutationFn: async (temuan) => {
+        mutationFn: async (temuanBaru) => {
             const res = await axios.post(INSERT_URL, {
                 table: "tb_temuan",
-                data: temuan, // ✅ cukup kirim judul
+                data: temuanBaru, // ✅ cukup kirim judul
             });
             return res.data; // axios otomatis parse JSON
         },
         onSuccess: (data, temuanBaru) => {
             if (data.success) {
-                Swal.fire({title : 'Tambah Temuan',icon: 'success', 'text' : 'Berhasil menambahkan temuan baru!'});
+                Swal.fire({
+                    title: 'Tambah Temuan',
+                    icon: 'success',
+                    text: 'Berhasil menambahkan temuan baru!'
+                });
+        
                 queryClient.invalidateQueries(['dataTemuan']);
-
-                let parsedData = {};
-                for (let [key, val] of temuanBaru.entries()) {
-                    if (key === "data") {
-                        try {
-                            parsedData = JSON.parse(val);
-                        } catch (e) {
-                            console.error("Gagal parse data:", e);
-                        }
-                    }
-                }
         
                 const temp = {
                     id: data.insertId,
-                    ...parsedData
+                    ...temuanBaru
                 };
-
+        
                 const values = [...temuanMonev, temp];
-                formikTemuan.setFieldValue('temuan', values.map(item => item.id).join(',')); 
+        
+                formikTemuan.setFieldValue(
+                    'temuan',
+                    values.map(item => item.id).join(',')
+                );
                 formikTemuan.setFieldTouched('temuan', true);
-                setTemuanMonev([...temuanMonev, temp]);
+                setTemuanMonev(values);
                 setFormikTemuan(null);
                 setNewTemuan('');
                 setShowModalTemuan(false);
@@ -504,18 +502,14 @@ const Monev = () =>{
     };    
 
     const handleSaveTemuan = (values, resetForm) => {
-        const formData = new FormData();
-        formData.append("table", "tb_temuan");  
-
         const payload = {
             temuan: values.temuan,
             kendala: values.kendala,
             rekomendasi: values.rekomendasi,
-            ket: values.ket,
+            ket: values.ket,            
         };
-        formData.append("data", JSON.stringify(payload)); 
 
-        tambahTemuanMutation.mutate(formData);
+        tambahTemuanMutation.mutate(payload);
         //console.log(values);
     };
 
